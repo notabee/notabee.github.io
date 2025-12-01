@@ -2,20 +2,135 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>ENTROPY_CYCLE</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RB // ENTROPY</title>
     <style>
+        /* --- CSS STYLING --- */
+        
+        @import url('https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400&display=swap');
+
+        :root {
+            --neon-pink: #FF0055;
+            --neon-dim: #990033;
+            --text-white: #e0e0e0;
+            --bg-black: #050505;
+        }
+
         body {
             margin: 0;
-            background-color: #000;
-            overflow: hidden;
+            background-color: var(--bg-black);
+            font-family: 'Courier Prime', 'Courier New', monospace;
+            color: var(--neon-pink);
+            overflow-x: hidden;
         }
-        canvas {
-            display: block;
+
+        /* The 3D Canvas sits behind everything */
+        #canvas-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100vh;
+            z-index: -1;
+            /* Fade out the bottom slightly */
+            mask-image: linear-gradient(to bottom, black 80%, transparent 100%);
+            -webkit-mask-image: linear-gradient(to bottom, black 80%, transparent 100%);
+        }
+
+        /* The Content Overlay */
+        main {
+            position: relative;
+            z-index: 10;
+            width: 100%;
+            max-width: 800px;
+            margin: 0 auto;
+            /* Pushes text below the 3D man visualization */
+            padding-top: 65vh; 
+            padding-bottom: 50px;
+            padding-left: 20px;
+            padding-right: 20px;
+            box-sizing: border-box;
+        }
+
+        /* Typography */
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            text-shadow: 0 0 10px var(--neon-pink);
+        }
+
+        .heart {
+            color: var(--text-white); 
+            font-weight: normal;
+        }
+
+        .subtitle {
+            font-size: 1.1rem;
+            color: var(--text-white);
+            margin-bottom: 2rem;
+            letter-spacing: 1px;
+            opacity: 0.9;
+        }
+
+        .bio-section {
+            font-size: 1rem;
+            line-height: 1.6;
+            color: var(--neon-pink);
+        }
+
+        .bio-text {
+            color: var(--text-white); 
+            border-left: 2px solid var(--neon-pink);
+            padding-left: 15px;
+        }
+
+        .cursor {
+            display: inline-block;
+            width: 10px;
+            height: 18px;
+            background-color: var(--neon-pink);
+            animation: blink 1s step-end infinite;
+            vertical-align: middle;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
+
+        /* Mobile adjustments */
+        @media (max-width: 600px) {
+            main { padding-top: 55vh; }
+            h1 { font-size: 2rem; }
         }
     </style>
 </head>
 <body>
-    <!-- Import Three.js -->
+
+    <!-- CONTAINER FOR THREE.JS -->
+    <div id="canvas-container"></div>
+
+    <!-- UI CONTENT LAYER -->
+    <main>
+        <!-- Header -->
+        <h1><span class="heart">♡</span> RB</h1>
+        
+        <!-- The Quote -->
+        <div class="subtitle">
+            A Universe of Atoms, An Atom In The Universe
+        </div>
+
+        <!-- Bio / Address Block -->
+        <div class="bio-section">
+            <div style="color: var(--neon-dim); margin-bottom: 5px;">All you need to know about me</div>
+            <div class="bio-text">
+                > I am RB and I play pixel hockey in my brain<span class="cursor"></span>
+            </div>
+        </div>
+    </main>
+
+    <!-- THREE.JS IMPORT -->
     <script type="importmap">
         {
             "imports": {
@@ -25,6 +140,7 @@
         }
     </script>
 
+    <!-- VISUALIZATION SCRIPT -->
     <script type="module">
         import * as THREE from 'three';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
@@ -55,15 +171,16 @@
 
         function init() {
             scene = new THREE.Scene();
-            scene.fog = new THREE.FogExp2(0x000000, 0.02);
+            scene.fog = new THREE.FogExp2(0x050505, 0.02);
 
             camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
             camera.position.set(0, 0, 30);
 
-            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-            document.body.appendChild(renderer.domElement);
+            
+            document.getElementById('canvas-container').appendChild(renderer.domElement);
 
             controls = new OrbitControls(camera, renderer.domElement);
             controls.enableDamping = true;
@@ -71,13 +188,8 @@
             controls.autoRotateSpeed = 1.0;
             controls.enableZoom = false;
 
-            // 1. Generate Man Shape
             generateManTargets();
-
-            // 2. Create Particles
             createParticles();
-
-            // 3. Create Black Hole Objects
             createBlackHole();
 
             window.addEventListener('resize', onWindowResize);
@@ -86,7 +198,7 @@
         function createBlackHole() {
             blackHoleGroup = new THREE.Group();
             scene.add(blackHoleGroup);
-            blackHoleGroup.visible = false; // Start hidden
+            blackHoleGroup.visible = false; 
 
             // Event Horizon
             const sphereGeo = new THREE.SphereGeometry(2, 64, 64);
@@ -109,26 +221,40 @@
             const tex = new THREE.CanvasTexture(canvas);
             
             const diskMat = new THREE.MeshBasicMaterial({ 
-                map: tex, side: THREE.DoubleSide, transparent: true, blending: THREE.AdditiveBlending 
+                map: tex, 
+                side: THREE.DoubleSide, 
+                transparent: true, 
+                blending: THREE.AdditiveBlending,
+                depthWrite: false // Helps prevent artifacts
             });
             accretionDisk = new THREE.Mesh(diskGeo, diskMat);
             accretionDisk.rotation.x = Math.PI / 2.3;
             blackHoleGroup.add(accretionDisk);
 
-            // Lensing Halo
+            // Lensing Halo - FIXED
             const haloGeo = new THREE.PlaneGeometry(15, 15);
             const haloMat = new THREE.MeshBasicMaterial({
-                color: 0xff0055, transparent: true, opacity: 0.1, blending: THREE.AdditiveBlending
+                color: 0xff0055, 
+                transparent: true, 
+                opacity: 0.15, 
+                blending: THREE.AdditiveBlending,
+                depthWrite: false // CRITICAL FIX: Prevents the "square shadow" box effect
             });
+            
             const hCanvas = document.createElement('canvas');
             hCanvas.width=64; hCanvas.height=64;
             const hCtx = hCanvas.getContext('2d');
-            const hGrad = hCtx.createRadialGradient(32,32,10, 32,32,32);
+            
+            // Reduced outer radius to 28 (from 32) to ensure the glow fades 
+            // completely before touching the edge of the square geometry.
+            const hGrad = hCtx.createRadialGradient(32,32,10, 32,32,28);
             hGrad.addColorStop(0, 'rgba(0,0,0,0)');
             hGrad.addColorStop(0.5, 'white');
             hGrad.addColorStop(1, 'rgba(0,0,0,0)');
+            
             hCtx.fillStyle = hGrad;
             hCtx.fillRect(0,0,64,64);
+            
             haloMat.map = new THREE.CanvasTexture(hCanvas);
             haloMat.alphaMap = haloMat.map;
             
@@ -137,7 +263,6 @@
         }
 
         function generateManTargets() {
-            // Procedural Human Shape
             const s = 4.0; 
             for (let i = 0; i < PARTICLE_COUNT; i++) {
                 let x=0, y=0, z=0;
@@ -166,8 +291,8 @@
                     z = (Math.random()-0.5)*0.3*s;
                 }
                 
-                // Center vertically
-                y -= 3.5;
+                // Shift up slightly to fit text below
+                y -= 2.0; 
                 targetManPositions.push(x, y, z);
             }
         }
@@ -224,7 +349,6 @@
             const col = geometry.attributes.color.array;
             const vel = velocities;
 
-            // Helper for Explosion/Bang logic to run once
             if (state === 'EXPLODE' && timer < dt*2) {
                  for(let i=0; i<PARTICLE_COUNT; i++) {
                      const idx = i*3;
@@ -243,43 +367,34 @@
                  }
             }
 
-            // Loop Particles
             for (let i = 0; i < PARTICLE_COUNT; i++) {
                 const idx = i*3;
                 let px = pos[idx], py = pos[idx+1], pz = pos[idx+2];
                 let vx = vel[idx], vy = vel[idx+1], vz = vel[idx+2];
 
                 if (state === 'MAN') {
-                    // Hologram Glitch
                     const tx = targetManPositions[idx];
                     const ty = targetManPositions[idx+1];
                     const tz = targetManPositions[idx+2];
                     
-                    // Snap back
                     px += (tx - px) * 0.1;
                     py += (ty - py) * 0.1;
                     pz += (tz - pz) * 0.1;
 
-                    // Jitter
                     if(Math.random() < 0.01) px += (Math.random()-0.5);
 
-                    // Color Pink
                     col[idx] = COLOR_MAN.r; col[idx+1] = COLOR_MAN.g; col[idx+2] = COLOR_MAN.b;
                     vx = 0; vy = 0; vz = 0;
                 }
                 else if (state === 'EXPLODE') {
-                    // Inertia + Drag
                     vx *= 0.95; vy *= 0.95; vz *= 0.95;
                 }
                 else if (state === 'SUCK') {
-                    // BH Growth
                     if(blackHoleGroup.scale.x < 1) blackHoleGroup.scale.addScalar(dt*2);
                     
-                    // Gravity
                     const dSq = px*px + py*py + pz*pz;
                     const dist = Math.sqrt(dSq);
                     
-                    // Force
                     const G = 250;
                     const f = G / (dSq + 0.1);
                     const inv = 1/(dist+0.01);
@@ -288,21 +403,17 @@
                     vy -= py * inv * f * dt;
                     vz -= pz * inv * f * dt;
 
-                    // Swirl
                     const swirl = 10;
                     vx += -pz * swirl * dt;
                     vz += px * swirl * dt;
 
-                    // Friction to ensure capture
                     vx *= 0.97; vy *= 0.97; vz *= 0.97;
 
-                    // Redshift Color (Closer = Hotter)
                     const heat = Math.max(0, 1 - dist/10);
                     col[idx] = THREE.MathUtils.lerp(COLOR_MAN.r, COLOR_HEAT.r, heat);
                     col[idx+1] = THREE.MathUtils.lerp(COLOR_MAN.g, COLOR_HEAT.g, heat);
                     col[idx+2] = THREE.MathUtils.lerp(COLOR_MAN.b, COLOR_HEAT.b, heat);
 
-                    // Event Horizon check
                     if(dist < 1.5) {
                         px = (Math.random()-0.5)*0.2;
                         py = (Math.random()-0.5)*0.2;
@@ -311,7 +422,6 @@
                     }
                 }
                 else if (state === 'BANG') {
-                    // High velocity outward, color cools down
                     vx *= 0.98; vy *= 0.98; vz *= 0.98;
                     col[idx] = THREE.MathUtils.lerp(col[idx], COLOR_MAN.r, 0.05);
                     col[idx+1] = THREE.MathUtils.lerp(col[idx+1], COLOR_MAN.g, 0.05);
@@ -338,7 +448,6 @@
             geometry.attributes.position.needsUpdate = true;
             geometry.attributes.color.needsUpdate = true;
 
-            // Visual Updates
             if(accretionDisk) accretionDisk.rotation.z -= 0.05;
             if(lensHalo) lensHalo.lookAt(camera.position);
         }
