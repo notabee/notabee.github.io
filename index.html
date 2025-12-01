@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RB // ENTROPY</title>
+    <title>RB // ENTROPY + DEEP BASS</title>
     <style>
         /* --- CSS STYLING --- */
         
@@ -21,10 +21,9 @@
             background-color: var(--bg-black);
             font-family: 'Courier Prime', 'Courier New', monospace;
             color: var(--neon-pink);
-            overflow-x: hidden;
+            overflow: hidden;
         }
 
-        /* The 3D Canvas sits behind everything */
         #canvas-container {
             position: fixed;
             top: 0;
@@ -32,27 +31,67 @@
             width: 100%;
             height: 100vh;
             z-index: -1;
-            /* Fade out the bottom slightly */
             mask-image: linear-gradient(to bottom, black 80%, transparent 100%);
             -webkit-mask-image: linear-gradient(to bottom, black 80%, transparent 100%);
         }
 
-        /* The Content Overlay */
         main {
             position: relative;
             z-index: 10;
             width: 100%;
             max-width: 800px;
             margin: 0 auto;
-            /* Pushes text below the 3D man visualization */
             padding-top: 65vh; 
             padding-bottom: 50px;
             padding-left: 20px;
             padding-right: 20px;
             box-sizing: border-box;
+            opacity: 0;
+            transition: opacity 2s ease;
+            pointer-events: none;
         }
 
-        /* Typography */
+        main.visible {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        /* START OVERLAY */
+        #start-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.95);
+            z-index: 999;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            transition: opacity 0.5s;
+        }
+
+        #start-btn {
+            border: 1px solid var(--neon-pink);
+            color: var(--neon-pink);
+            padding: 15px 30px;
+            font-family: inherit;
+            font-size: 1.2rem;
+            background: transparent;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            animation: pulse 2s infinite;
+        }
+        
+        #start-sub {
+            margin-top: 15px;
+            color: var(--text-white);
+            font-size: 0.8rem;
+            opacity: 0.7;
+        }
+
         h1 {
             font-size: 2.5rem;
             font-weight: 700;
@@ -60,68 +99,29 @@
             text-shadow: 0 0 10px var(--neon-pink);
         }
 
-        .heart {
-            color: var(--text-white); 
-            font-weight: normal;
-        }
+        .heart { color: var(--text-white); font-weight: normal; }
+        .subtitle { font-size: 1.1rem; color: var(--text-white); margin-bottom: 2rem; letter-spacing: 1px; opacity: 0.9; }
+        .bio-section { font-size: 1rem; line-height: 1.6; color: var(--neon-pink); }
+        .bio-text { color: var(--text-white); border-left: 2px solid var(--neon-pink); padding-left: 15px; }
+        .cursor { display: inline-block; width: 10px; height: 18px; background-color: var(--neon-pink); animation: blink 1s step-end infinite; vertical-align: middle; }
 
-        .subtitle {
-            font-size: 1.1rem;
-            color: var(--text-white);
-            margin-bottom: 2rem;
-            letter-spacing: 1px;
-            opacity: 0.9;
-        }
-
-        .bio-section {
-            font-size: 1rem;
-            line-height: 1.6;
-            color: var(--neon-pink);
-        }
-
-        .bio-text {
-            color: var(--text-white); 
-            border-left: 2px solid var(--neon-pink);
-            padding-left: 15px;
-        }
-
-        .cursor {
-            display: inline-block;
-            width: 10px;
-            height: 18px;
-            background-color: var(--neon-pink);
-            animation: blink 1s step-end infinite;
-            vertical-align: middle;
-        }
-
-        @keyframes blink {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0; }
-        }
-
-        /* Mobile adjustments */
-        @media (max-width: 600px) {
-            main { padding-top: 55vh; }
-            h1 { font-size: 2rem; }
-        }
+        @keyframes blink { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(255, 0, 85, 0.4); } 70% { box-shadow: 0 0 0 10px rgba(255, 0, 85, 0); } 100% { box-shadow: 0 0 0 0 rgba(255, 0, 85, 0); } }
+        @media (max-width: 600px) { main { padding-top: 55vh; } h1 { font-size: 2rem; } }
     </style>
 </head>
 <body>
 
-    <!-- CONTAINER FOR THREE.JS -->
+    <div id="start-overlay">
+        <div id="start-btn">Initialize System</div>
+        <div id="start-sub">[ Audio + Visual Experience ]</div>
+    </div>
+
     <div id="canvas-container"></div>
 
-    <!-- UI CONTENT LAYER -->
-    <main>
-        <!-- Header -->
+    <main id="main-content">
         <h1><span class="heart">♡</span> RB</h1>
-        
-        <!-- The Quote -->
-        <div class="subtitle">
-            A Universe of Atoms, An Atom In The Universe
-        </div>
-
-        <!-- Bio / Address Block -->
+        <div class="subtitle">A Universe of Atoms, An Atom In The Universe</div>
         <div class="bio-section">
             <div style="color: var(--neon-dim); margin-bottom: 5px;">All you need to know about me</div>
             <div class="bio-text">
@@ -130,44 +130,236 @@
         </div>
     </main>
 
-    <!-- THREE.JS IMPORT -->
     <script type="importmap">
-        {
-            "imports": {
-                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
-                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
-            }
-        }
+        { "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js", "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/" } }
     </script>
 
-    <!-- VISUALIZATION SCRIPT -->
     <script type="module">
         import * as THREE from 'three';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
-        // --- CONFIG ---
+        // --- AUDIO ENGINE CLASS ---
+        class SynthEngine {
+            constructor() {
+                this.ctx = null;
+                this.masterGain = null;
+                this.isSetup = false;
+                this.droneOscs = [];
+                this.suckOsc = null;
+                this.suckGain = null;
+            }
+
+            setup() {
+                if (this.isSetup) return;
+                const AudioContext = window.AudioContext || window.webkitAudioContext;
+                this.ctx = new AudioContext();
+                
+                const compressor = this.ctx.createDynamicsCompressor();
+                compressor.threshold.setValueAtTime(-24, this.ctx.currentTime);
+                compressor.knee.setValueAtTime(30, this.ctx.currentTime);
+                compressor.ratio.setValueAtTime(12, this.ctx.currentTime);
+                compressor.attack.setValueAtTime(0.003, this.ctx.currentTime);
+                compressor.release.setValueAtTime(0.25, this.ctx.currentTime);
+                compressor.connect(this.ctx.destination);
+
+                this.masterGain = this.ctx.createGain();
+                this.masterGain.gain.value = 0.5; 
+                this.masterGain.connect(compressor);
+                this.isSetup = true;
+            }
+
+            resume() { if(this.ctx && this.ctx.state === 'suspended') this.ctx.resume(); }
+
+            // 1. MAN STATE: Drone
+            startDrone() {
+                if (!this.isSetup) return;
+                this.stopDrone();
+                const freqs = [110, 112];
+                freqs.forEach(f => {
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    osc.type = 'sine';
+                    osc.frequency.value = f;
+                    gain.gain.value = 0;
+                    gain.gain.linearRampToValueAtTime(0.1, this.ctx.currentTime + 2);
+                    osc.connect(gain);
+                    gain.connect(this.masterGain);
+                    osc.start();
+                    this.droneOscs.push({osc, gain});
+                });
+            }
+
+            stopDrone() {
+                this.droneOscs.forEach(o => {
+                    o.gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 1);
+                    o.osc.stop(this.ctx.currentTime + 1);
+                });
+                this.droneOscs = [];
+            }
+
+            triggerHeartbeat() {
+                if (!this.isSetup) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'sine';
+                osc.frequency.setValueAtTime(60, this.ctx.currentTime);
+                osc.frequency.exponentialRampToValueAtTime(30, this.ctx.currentTime + 0.1);
+                gain.gain.setValueAtTime(0.5, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.15);
+                osc.connect(gain);
+                gain.connect(this.masterGain);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.2);
+            }
+
+            // --- SHARED EXPLOSION LOGIC (Deep Rumble) ---
+            triggerDeepBoom() {
+                if (!this.isSetup) return;
+                const t = this.ctx.currentTime;
+
+                // LAYER 1: Sub-Bass Drop (The Impact)
+                const subOsc = this.ctx.createOscillator();
+                const subGain = this.ctx.createGain();
+                subOsc.type = 'triangle';
+                subOsc.frequency.setValueAtTime(80, t);
+                subOsc.frequency.exponentialRampToValueAtTime(10, t + 1.0);
+                
+                subGain.gain.setValueAtTime(1.0, t);
+                subGain.gain.exponentialRampToValueAtTime(0.001, t + 1.5);
+                
+                subOsc.connect(subGain);
+                subGain.connect(this.masterGain);
+                subOsc.start(t);
+                subOsc.stop(t + 2.0);
+
+                // LAYER 2: Filtered Noise Rumble (The Aftermath)
+                const bufferSize = this.ctx.sampleRate * 3.0;
+                const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+                const data = buffer.getChannelData(0);
+                for (let i = 0; i < bufferSize; i++) data[i] = (Math.random() * 2 - 1);
+
+                const noise = this.ctx.createBufferSource();
+                noise.buffer = buffer;
+
+                // Lowpass Filter: Turns "Hiss" into "Earthquake"
+                const noiseFilter = this.ctx.createBiquadFilter();
+                noiseFilter.type = 'lowpass';
+                noiseFilter.frequency.setValueAtTime(600, t); 
+                noiseFilter.frequency.exponentialRampToValueAtTime(30, t + 2.0);
+
+                const noiseGain = this.ctx.createGain();
+                noiseGain.gain.setValueAtTime(1.2, t);
+                noiseGain.gain.exponentialRampToValueAtTime(0.01, t + 2.5);
+
+                noise.connect(noiseFilter);
+                noiseFilter.connect(noiseGain);
+                noiseGain.connect(this.masterGain);
+                noise.start(t);
+            }
+
+            // 2. EXPLODE STATE (Man Bursts)
+            triggerExplosion() {
+                if (!this.isSetup) return;
+                this.stopDrone();
+                this.triggerDeepBoom(); // NOW USES DEEP BOOM
+            }
+
+            // 3. SUCK STATE
+            startSuck() {
+                if (!this.isSetup) return;
+                this.suckOsc = this.ctx.createOscillator();
+                this.suckGain = this.ctx.createGain();
+                this.suckOsc.type = 'sawtooth';
+                this.suckOsc.frequency.setValueAtTime(50, this.ctx.currentTime);
+                this.suckOsc.frequency.exponentialRampToValueAtTime(800, this.ctx.currentTime + 6);
+                
+                this.suckGain.gain.value = 0;
+                this.suckGain.gain.linearRampToValueAtTime(0.2, this.ctx.currentTime + 1);
+
+                this.suckFilter = this.ctx.createBiquadFilter();
+                this.suckFilter.type = 'lowpass';
+                this.suckFilter.frequency.setValueAtTime(100, this.ctx.currentTime);
+                this.suckFilter.frequency.linearRampToValueAtTime(5000, this.ctx.currentTime + 6);
+
+                this.suckOsc.connect(this.suckFilter);
+                this.suckFilter.connect(this.suckGain);
+                this.suckGain.connect(this.masterGain);
+                this.suckOsc.start();
+            }
+
+            triggerGeigerTick(intensity) {
+                if (!this.isSetup) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                osc.type = 'square';
+                osc.frequency.value = 800 + (Math.random()*400);
+                gain.gain.setValueAtTime(0.1 * intensity, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.05);
+                osc.connect(gain);
+                gain.connect(this.masterGain);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.05);
+            }
+
+            stopSuck() {
+                if(this.suckOsc) {
+                    this.suckOsc.stop();
+                    this.suckOsc = null;
+                }
+            }
+
+            // 4. BANG (Black Hole Bursts)
+            triggerBang() {
+                this.stopSuck();
+                this.triggerDeepBoom(); // ALSO USES DEEP BOOM
+            }
+
+            // 5. REFORM
+            triggerReformBlip() {
+                if (!this.isSetup) return;
+                const osc = this.ctx.createOscillator();
+                const gain = this.ctx.createGain();
+                const notes = [440, 523.25, 587.33, 659.25, 783.99, 880];
+                const freq = notes[Math.floor(Math.random()*notes.length)];
+                osc.type = 'triangle';
+                osc.frequency.setValueAtTime(freq, this.ctx.currentTime);
+                gain.gain.setValueAtTime(0.05, this.ctx.currentTime);
+                gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.1);
+                const panner = this.ctx.createStereoPanner();
+                panner.pan.value = (Math.random()*2) - 1;
+                osc.connect(gain);
+                gain.connect(panner);
+                panner.connect(this.masterGain);
+                osc.start();
+                osc.stop(this.ctx.currentTime + 0.1);
+            }
+        }
+
+        const synth = new SynthEngine();
+
+        // --- THREE.JS LOGIC ---
         const PARTICLE_COUNT = 40000;
-        const COLOR_MAN = new THREE.Color(0xFF0055); // Neon Pink
-        const COLOR_HEAT = new THREE.Color(0xFFDD00); // Burning Orange/White
+        const COLOR_MAN = new THREE.Color(0xFF0055); 
+        const COLOR_HEAT = new THREE.Color(0xFFDD00); 
         
         let scene, camera, renderer, controls;
         let particles, geometry, positions, velocities, colors;
         let targetManPositions = [];
         let blackHoleGroup, accretionDisk, lensHalo;
         
-        // State Machine
         let state = 'MAN'; 
+        let lastState = '';
         let timer = 0;
         
-        // Time Steps
-        const TIME_MAN = 3.0;
+        const TIME_MAN = 4.0;
         const TIME_EXPLODE = 1.0;
         const TIME_SUCK = 6.0;
         const TIME_BANG = 0.5;
         const TIME_REFORM = 3.0;
 
+        let beatTimer = 0;
+
         init();
-        animate();
 
         function init() {
             scene = new THREE.Scene();
@@ -179,18 +371,32 @@
             renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
             renderer.setSize(window.innerWidth, window.innerHeight);
             renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
-            
             document.getElementById('canvas-container').appendChild(renderer.domElement);
 
             controls = new OrbitControls(camera, renderer.domElement);
             controls.enableDamping = true;
             controls.autoRotate = true;
-            controls.autoRotateSpeed = 1.0;
+            controls.autoRotateSpeed = 4.0; // Faster rotation
             controls.enableZoom = false;
 
             generateManTargets();
             createParticles();
             createBlackHole();
+
+            const overlay = document.getElementById('start-overlay');
+            const mainContent = document.getElementById('main-content');
+            
+            overlay.addEventListener('click', () => {
+                synth.setup();
+                synth.resume();
+                synth.startDrone();
+                overlay.style.opacity = 0;
+                setTimeout(() => {
+                    overlay.style.display = 'none';
+                    mainContent.classList.add('visible');
+                    animate();
+                }, 500);
+            });
 
             window.addEventListener('resize', onWindowResize);
         }
@@ -200,13 +406,10 @@
             scene.add(blackHoleGroup);
             blackHoleGroup.visible = false; 
 
-            // Event Horizon
             const sphereGeo = new THREE.SphereGeometry(2, 64, 64);
             const sphereMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
-            const sphere = new THREE.Mesh(sphereGeo, sphereMat);
-            blackHoleGroup.add(sphere);
+            blackHoleGroup.add(new THREE.Mesh(sphereGeo, sphereMat));
 
-            // Accretion Disk (Glow)
             const diskGeo = new THREE.RingGeometry(2.1, 6, 64);
             const canvas = document.createElement('canvas');
             canvas.width = 128; canvas.height = 1;
@@ -221,43 +424,27 @@
             const tex = new THREE.CanvasTexture(canvas);
             
             const diskMat = new THREE.MeshBasicMaterial({ 
-                map: tex, 
-                side: THREE.DoubleSide, 
-                transparent: true, 
-                blending: THREE.AdditiveBlending,
-                depthWrite: false // Helps prevent artifacts
+                map: tex, side: THREE.DoubleSide, transparent: true, blending: THREE.AdditiveBlending, depthWrite: false 
             });
             accretionDisk = new THREE.Mesh(diskGeo, diskMat);
             accretionDisk.rotation.x = Math.PI / 2.3;
             blackHoleGroup.add(accretionDisk);
 
-            // Lensing Halo - FIXED
             const haloGeo = new THREE.PlaneGeometry(15, 15);
             const haloMat = new THREE.MeshBasicMaterial({
-                color: 0xff0055, 
-                transparent: true, 
-                opacity: 0.15, 
-                blending: THREE.AdditiveBlending,
-                depthWrite: false // CRITICAL FIX: Prevents the "square shadow" box effect
+                color: 0xff0055, transparent: true, opacity: 0.15, blending: THREE.AdditiveBlending, depthWrite: false
             });
-            
             const hCanvas = document.createElement('canvas');
             hCanvas.width=64; hCanvas.height=64;
             const hCtx = hCanvas.getContext('2d');
-            
-            // Reduced outer radius to 28 (from 32) to ensure the glow fades 
-            // completely before touching the edge of the square geometry.
             const hGrad = hCtx.createRadialGradient(32,32,10, 32,32,28);
             hGrad.addColorStop(0, 'rgba(0,0,0,0)');
             hGrad.addColorStop(0.5, 'white');
             hGrad.addColorStop(1, 'rgba(0,0,0,0)');
-            
             hCtx.fillStyle = hGrad;
             hCtx.fillRect(0,0,64,64);
-            
             haloMat.map = new THREE.CanvasTexture(hCanvas);
             haloMat.alphaMap = haloMat.map;
-            
             lensHalo = new THREE.Mesh(haloGeo, haloMat);
             blackHoleGroup.add(lensHalo);
         }
@@ -267,31 +454,16 @@
             for (let i = 0; i < PARTICLE_COUNT; i++) {
                 let x=0, y=0, z=0;
                 const r = Math.random();
-
-                if (r < 0.15) { // Head
-                    const theta = Math.random()*Math.PI*2;
-                    const phi = Math.acos(2*Math.random()-1);
-                    const rad = 0.4*s;
-                    x = rad*Math.sin(phi)*Math.cos(theta);
-                    y = rad*Math.sin(phi)*Math.sin(theta) + (1.6*s);
-                    z = rad*Math.cos(phi);
-                } else if (r < 0.50) { // Torso
-                    x = (Math.random()-0.5)*0.9*s;
-                    y = (Math.random()*1.0*s) + (0.5*s);
-                    z = (Math.random()-0.5)*0.5*s;
-                } else if (r < 0.75) { // Legs
-                    const leg = Math.random()>0.5?1:-1;
-                    x = (leg*0.25*s) + (Math.random()-0.5)*0.3*s;
-                    y = Math.random()*0.5*s;
-                    z = (Math.random()-0.5)*0.4*s;
-                } else { // Arms
-                    const arm = Math.random()>0.5?1:-1;
-                    x = (arm*0.6*s) + (Math.random()-0.5)*0.25*s;
-                    y = (Math.random()*0.8*s) + (0.6*s);
-                    z = (Math.random()-0.5)*0.3*s;
+                if (r < 0.15) { 
+                    const theta = Math.random()*Math.PI*2; const phi = Math.acos(2*Math.random()-1); const rad = 0.4*s;
+                    x = rad*Math.sin(phi)*Math.cos(theta); y = rad*Math.sin(phi)*Math.sin(theta) + (1.6*s); z = rad*Math.cos(phi);
+                } else if (r < 0.50) { 
+                    x = (Math.random()-0.5)*0.9*s; y = (Math.random()*1.0*s) + (0.5*s); z = (Math.random()-0.5)*0.5*s;
+                } else if (r < 0.75) { 
+                    const leg = Math.random()>0.5?1:-1; x = (leg*0.25*s) + (Math.random()-0.5)*0.3*s; y = Math.random()*0.5*s; z = (Math.random()-0.5)*0.4*s;
+                } else { 
+                    const arm = Math.random()>0.5?1:-1; x = (arm*0.6*s) + (Math.random()-0.5)*0.25*s; y = (Math.random()*0.8*s) + (0.6*s); z = (Math.random()-0.5)*0.3*s;
                 }
-                
-                // Shift up slightly to fit text below
                 y -= 2.0; 
                 targetManPositions.push(x, y, z);
             }
@@ -302,28 +474,15 @@
             positions = new Float32Array(PARTICLE_COUNT * 3);
             velocities = new Float32Array(PARTICLE_COUNT * 3);
             colors = new Float32Array(PARTICLE_COUNT * 3);
-
             for (let i = 0; i < PARTICLE_COUNT * 3; i++) {
-                positions[i] = targetManPositions[i];
-                velocities[i] = 0;
-                colors[i] = 0;
+                positions[i] = targetManPositions[i]; velocities[i] = 0; colors[i] = 0;
             }
-
             geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
             geometry.setAttribute('color', new THREE.BufferAttribute(colors, 3));
-
             const sprite = new THREE.TextureLoader().load('https://threejs.org/examples/textures/sprites/disc.png');
-
             const material = new THREE.PointsMaterial({
-                size: 0.15,
-                map: sprite,
-                vertexColors: true,
-                transparent: true,
-                opacity: 0.9,
-                blending: THREE.AdditiveBlending,
-                depthWrite: false
+                size: 0.15, map: sprite, vertexColors: true, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending, depthWrite: false
             });
-
             particles = new THREE.Points(geometry, material);
             scene.add(particles);
         }
@@ -331,20 +490,37 @@
         function updatePhysics(dt) {
             timer += dt;
 
-            // --- STATE CONTROL ---
             if (state === 'MAN') {
                 if (timer > TIME_MAN) { state = 'EXPLODE'; timer = 0; }
-            } else if (state === 'EXPLODE') {
+                beatTimer += dt;
+                if(beatTimer > 1.2) { synth.triggerHeartbeat(); beatTimer = 0; }
+            } 
+            else if (state === 'EXPLODE') {
                 if (timer > TIME_EXPLODE) { state = 'SUCK'; timer = 0; blackHoleGroup.visible = true; blackHoleGroup.scale.setScalar(0.1); }
-            } else if (state === 'SUCK') {
+            } 
+            else if (state === 'SUCK') {
                 if (timer > TIME_SUCK) { state = 'BANG'; timer = 0; }
-            } else if (state === 'BANG') {
+                beatTimer += dt;
+                const interval = Math.max(0.05, 0.5 - (timer/TIME_SUCK)*0.45); 
+                if(beatTimer > interval) { synth.triggerGeigerTick(timer/TIME_SUCK); beatTimer = 0; }
+            } 
+            else if (state === 'BANG') {
                 if (timer > TIME_BANG) { state = 'REFORM'; timer = 0; blackHoleGroup.visible = false; }
-            } else if (state === 'REFORM') {
+            } 
+            else if (state === 'REFORM') {
                 if (timer > TIME_REFORM) { state = 'MAN'; timer = 0; }
+                if(Math.random() < 0.1) synth.triggerReformBlip();
             }
 
-            // --- PARTICLE PHYSICS ---
+            // AUDIO SYNC
+            if(state !== lastState) {
+                if(state === 'MAN') synth.startDrone();
+                if(state === 'EXPLODE') synth.triggerExplosion(); // Now triggers Deep Boom
+                if(state === 'SUCK') synth.startSuck();
+                if(state === 'BANG') synth.triggerBang(); // Now triggers Deep Boom
+                lastState = state;
+            }
+
             const pos = geometry.attributes.position.array;
             const col = geometry.attributes.color.array;
             const vel = velocities;
@@ -373,17 +549,11 @@
                 let vx = vel[idx], vy = vel[idx+1], vz = vel[idx+2];
 
                 if (state === 'MAN') {
-                    const tx = targetManPositions[idx];
-                    const ty = targetManPositions[idx+1];
-                    const tz = targetManPositions[idx+2];
-                    
-                    px += (tx - px) * 0.1;
-                    py += (ty - py) * 0.1;
-                    pz += (tz - pz) * 0.1;
-
-                    if(Math.random() < 0.01) px += (Math.random()-0.5);
-
-                    col[idx] = COLOR_MAN.r; col[idx+1] = COLOR_MAN.g; col[idx+2] = COLOR_MAN.b;
+                    const tx = targetManPositions[idx]; const ty = targetManPositions[idx+1]; const tz = targetManPositions[idx+2];
+                    px += (tx - px) * 0.1; py += (ty - py) * 0.1; pz += (tz - pz) * 0.1;
+                    if(Math.random() < 0.01) px += (Math.random()-0.5); 
+                    const pulse = Math.sin(beatTimer * 5) > 0 ? 1.2 : 1.0;
+                    col[idx] = COLOR_MAN.r * pulse; col[idx+1] = COLOR_MAN.g * pulse; col[idx+2] = COLOR_MAN.b * pulse;
                     vx = 0; vy = 0; vz = 0;
                 }
                 else if (state === 'EXPLODE') {
@@ -391,63 +561,28 @@
                 }
                 else if (state === 'SUCK') {
                     if(blackHoleGroup.scale.x < 1) blackHoleGroup.scale.addScalar(dt*2);
-                    
-                    const dSq = px*px + py*py + pz*pz;
-                    const dist = Math.sqrt(dSq);
-                    
-                    const G = 250;
-                    const f = G / (dSq + 0.1);
-                    const inv = 1/(dist+0.01);
-                    
-                    vx -= px * inv * f * dt;
-                    vy -= py * inv * f * dt;
-                    vz -= pz * inv * f * dt;
-
-                    const swirl = 10;
-                    vx += -pz * swirl * dt;
-                    vz += px * swirl * dt;
-
+                    const dSq = px*px + py*py + pz*pz; const dist = Math.sqrt(dSq);
+                    const G = 250; const f = G / (dSq + 0.1); const inv = 1/(dist+0.01);
+                    vx -= px * inv * f * dt; vy -= py * inv * f * dt; vz -= pz * inv * f * dt;
+                    const swirl = 10; vx += -pz * swirl * dt; vz += px * swirl * dt;
                     vx *= 0.97; vy *= 0.97; vz *= 0.97;
-
                     const heat = Math.max(0, 1 - dist/10);
-                    col[idx] = THREE.MathUtils.lerp(COLOR_MAN.r, COLOR_HEAT.r, heat);
-                    col[idx+1] = THREE.MathUtils.lerp(COLOR_MAN.g, COLOR_HEAT.g, heat);
-                    col[idx+2] = THREE.MathUtils.lerp(COLOR_MAN.b, COLOR_HEAT.b, heat);
-
-                    if(dist < 1.5) {
-                        px = (Math.random()-0.5)*0.2;
-                        py = (Math.random()-0.5)*0.2;
-                        pz = (Math.random()-0.5)*0.2;
-                        vx=0; vy=0; vz=0; 
-                    }
+                    col[idx] = THREE.MathUtils.lerp(COLOR_MAN.r, COLOR_HEAT.r, heat); col[idx+1] = THREE.MathUtils.lerp(COLOR_MAN.g, COLOR_HEAT.g, heat); col[idx+2] = THREE.MathUtils.lerp(COLOR_MAN.b, COLOR_HEAT.b, heat);
+                    if(dist < 1.5) { px = (Math.random()-0.5)*0.2; py = (Math.random()-0.5)*0.2; pz = (Math.random()-0.5)*0.2; vx=0; vy=0; vz=0; }
                 }
                 else if (state === 'BANG') {
                     vx *= 0.98; vy *= 0.98; vz *= 0.98;
-                    col[idx] = THREE.MathUtils.lerp(col[idx], COLOR_MAN.r, 0.05);
-                    col[idx+1] = THREE.MathUtils.lerp(col[idx+1], COLOR_MAN.g, 0.05);
-                    col[idx+2] = THREE.MathUtils.lerp(col[idx+2], COLOR_MAN.b, 0.05);
+                    col[idx] = THREE.MathUtils.lerp(col[idx], COLOR_MAN.r, 0.05); col[idx+1] = THREE.MathUtils.lerp(col[idx+1], COLOR_MAN.g, 0.05); col[idx+2] = THREE.MathUtils.lerp(col[idx+2], COLOR_MAN.b, 0.05);
                 }
                 else if (state === 'REFORM') {
-                    const tx = targetManPositions[idx];
-                    const ty = targetManPositions[idx+1];
-                    const tz = targetManPositions[idx+2];
-                    
-                    const lerp = 3.0 * dt;
-                    px += (tx - px) * lerp;
-                    py += (ty - py) * lerp;
-                    pz += (tz - pz) * lerp;
+                    const tx = targetManPositions[idx]; const ty = targetManPositions[idx+1]; const tz = targetManPositions[idx+2];
+                    const lerp = 3.0 * dt; px += (tx - px) * lerp; py += (ty - py) * lerp; pz += (tz - pz) * lerp;
                 }
-
-                pos[idx] = px + vx*dt;
-                pos[idx+1] = py + vy*dt;
-                pos[idx+2] = pz + vz*dt;
-                
+                pos[idx] = px + vx*dt; pos[idx+1] = py + vy*dt; pos[idx+2] = pz + vz*dt;
                 vel[idx] = vx; vel[idx+1] = vy; vel[idx+2] = vz;
             }
-
             geometry.attributes.position.needsUpdate = true;
             geometry.attributes.color.needsUpdate = true;
-
             if(accretionDisk) accretionDisk.rotation.z -= 0.05;
             if(lensHalo) lensHalo.lookAt(camera.position);
         }
