@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>RB // ENTROPY + DEEP BASS</title>
+    <title>RB // ENTROPY (Soft Audio)</title>
     <style>
         /* --- CSS STYLING --- */
         
@@ -212,12 +212,12 @@
                 osc.stop(this.ctx.currentTime + 0.2);
             }
 
-            // --- SHARED EXPLOSION LOGIC (Deep Rumble) ---
+            // --- DEEP BOOM EXPLOSION ---
             triggerDeepBoom() {
                 if (!this.isSetup) return;
                 const t = this.ctx.currentTime;
 
-                // LAYER 1: Sub-Bass Drop (The Impact)
+                // LAYER 1: Sub-Bass Drop
                 const subOsc = this.ctx.createOscillator();
                 const subGain = this.ctx.createGain();
                 subOsc.type = 'triangle';
@@ -232,7 +232,7 @@
                 subOsc.start(t);
                 subOsc.stop(t + 2.0);
 
-                // LAYER 2: Filtered Noise Rumble (The Aftermath)
+                // LAYER 2: Filtered Rumble
                 const bufferSize = this.ctx.sampleRate * 3.0;
                 const buffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
                 const data = buffer.getChannelData(0);
@@ -241,7 +241,6 @@
                 const noise = this.ctx.createBufferSource();
                 noise.buffer = buffer;
 
-                // Lowpass Filter: Turns "Hiss" into "Earthquake"
                 const noiseFilter = this.ctx.createBiquadFilter();
                 noiseFilter.type = 'lowpass';
                 noiseFilter.frequency.setValueAtTime(600, t); 
@@ -257,44 +256,52 @@
                 noise.start(t);
             }
 
-            // 2. EXPLODE STATE (Man Bursts)
             triggerExplosion() {
                 if (!this.isSetup) return;
                 this.stopDrone();
-                this.triggerDeepBoom(); // NOW USES DEEP BOOM
+                this.triggerDeepBoom();
             }
 
-            // 3. SUCK STATE
+            // 3. SUCK STATE (MODIFIED: Softer Sine Wave)
             startSuck() {
                 if (!this.isSetup) return;
+                
                 this.suckOsc = this.ctx.createOscillator();
                 this.suckGain = this.ctx.createGain();
-                this.suckOsc.type = 'sawtooth';
-                this.suckOsc.frequency.setValueAtTime(50, this.ctx.currentTime);
-                this.suckOsc.frequency.exponentialRampToValueAtTime(800, this.ctx.currentTime + 6);
+                
+                // CHANGED: From 'sawtooth' (harsh) to 'sine' (smooth)
+                this.suckOsc.type = 'sine';
+                
+                // CHANGED: Start frequency slightly higher (60Hz)
+                this.suckOsc.frequency.setValueAtTime(60, this.ctx.currentTime);
+                
+                // CHANGED: End frequency much lower (300Hz instead of 800Hz)
+                // This prevents the "hurt ears" high pitch
+                this.suckOsc.frequency.exponentialRampToValueAtTime(300, this.ctx.currentTime + 6);
                 
                 this.suckGain.gain.value = 0;
-                this.suckGain.gain.linearRampToValueAtTime(0.2, this.ctx.currentTime + 1);
+                this.suckGain.gain.linearRampToValueAtTime(0.3, this.ctx.currentTime + 5);
 
-                this.suckFilter = this.ctx.createBiquadFilter();
-                this.suckFilter.type = 'lowpass';
-                this.suckFilter.frequency.setValueAtTime(100, this.ctx.currentTime);
-                this.suckFilter.frequency.linearRampToValueAtTime(5000, this.ctx.currentTime + 6);
-
-                this.suckOsc.connect(this.suckFilter);
-                this.suckFilter.connect(this.suckGain);
+                this.suckOsc.connect(this.suckGain);
                 this.suckGain.connect(this.masterGain);
                 this.suckOsc.start();
             }
 
+            // MODIFIED: Softer Clicks
             triggerGeigerTick(intensity) {
                 if (!this.isSetup) return;
                 const osc = this.ctx.createOscillator();
                 const gain = this.ctx.createGain();
-                osc.type = 'square';
-                osc.frequency.value = 800 + (Math.random()*400);
-                gain.gain.setValueAtTime(0.1 * intensity, this.ctx.currentTime);
+                
+                // CHANGED: From 'square' to 'triangle' (softer)
+                osc.type = 'triangle'; 
+                
+                // CHANGED: Lower pitch (200-400Hz instead of 800-1200Hz)
+                osc.frequency.value = 200 + (Math.random()*200);
+                
+                gain.gain.setValueAtTime(0.15 * intensity, this.ctx.currentTime);
                 gain.gain.exponentialRampToValueAtTime(0.001, this.ctx.currentTime + 0.05);
+                
                 osc.connect(gain);
                 gain.connect(this.masterGain);
                 osc.start();
@@ -308,10 +315,9 @@
                 }
             }
 
-            // 4. BANG (Black Hole Bursts)
             triggerBang() {
                 this.stopSuck();
-                this.triggerDeepBoom(); // ALSO USES DEEP BOOM
+                this.triggerDeepBoom();
             }
 
             // 5. REFORM
@@ -376,7 +382,7 @@
             controls = new OrbitControls(camera, renderer.domElement);
             controls.enableDamping = true;
             controls.autoRotate = true;
-            controls.autoRotateSpeed = 4.0; // Faster rotation
+            controls.autoRotateSpeed = 4.0; 
             controls.enableZoom = false;
 
             generateManTargets();
@@ -515,9 +521,9 @@
             // AUDIO SYNC
             if(state !== lastState) {
                 if(state === 'MAN') synth.startDrone();
-                if(state === 'EXPLODE') synth.triggerExplosion(); // Now triggers Deep Boom
+                if(state === 'EXPLODE') synth.triggerExplosion();
                 if(state === 'SUCK') synth.startSuck();
-                if(state === 'BANG') synth.triggerBang(); // Now triggers Deep Boom
+                if(state === 'BANG') synth.triggerBang();
                 lastState = state;
             }
 
