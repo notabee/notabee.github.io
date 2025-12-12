@@ -2,21 +2,513 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Super Game</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>NEON LEAP // RB</title>
     <style>
-        /*  Basic game styling, reuse colors if possible */
-        body {
-            background-color: #050505;  /* Your background */
-            color: #FF0055; /* Your neon pink */
-            font-family: 'Courier Prime', monospace;
-            text-align: center;
+        @import url('https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&display=swap');
+
+        :root {
+            --neon-pink: #FF0055;
+            --neon-dim: #990033;
+            --text-white: #e0e0e0;
+            --bg-black: #050505;
         }
+
+        body {
+            margin: 0;
+            background-color: var(--bg-black);
+            font-family: 'Courier Prime', monospace;
+            overflow: hidden;
+            touch-action: none; /* Prevent zooming on mobile */
+            user-select: none;
+        }
+
+        #game-canvas {
+            display: block;
+            width: 100%;
+            height: 100vh;
+        }
+
+        #ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .score-display {
+            position: absolute;
+            top: 50px;
+            font-size: 4rem;
+            color: rgba(255, 255, 255, 0.1);
+            font-weight: bold;
+            z-index: 0;
+        }
+
+        #start-screen, #game-over-screen {
+            background: rgba(5, 5, 5, 0.85);
+            padding: 40px;
+            border: 1px solid var(--neon-pink);
+            text-align: center;
+            pointer-events: auto;
+            backdrop-filter: blur(5px);
+            box-shadow: 0 0 20px rgba(255, 0, 85, 0.2);
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        h1 {
+            color: var(--neon-pink);
+            margin: 0;
+            font-size: 2rem;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            text-shadow: 0 0 10px var(--neon-pink);
+        }
+
+        p {
+            color: var(--text-white);
+            font-size: 1rem;
+            line-height: 1.5;
+        }
+
+        button {
+            background: transparent;
+            color: var(--neon-pink);
+            border: 1px solid var(--neon-pink);
+            padding: 15px 30px;
+            font-family: inherit;
+            font-size: 1.2rem;
+            cursor: pointer;
+            text-transform: uppercase;
+            transition: all 0.2s;
+        }
+
+        button:hover {
+            background: var(--neon-pink);
+            color: var(--bg-black);
+            box-shadow: 0 0 15px var(--neon-pink);
+        }
+
+        .hidden {
+            display: none !important;
+        }
+
+        /* Back button top left */
+        .back-btn {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: var(--neon-dim);
+            text-decoration: none;
+            font-size: 0.9rem;
+            z-index: 100;
+            pointer-events: auto;
+            border: 1px solid var(--neon-dim);
+            padding: 5px 10px;
+        }
+        .back-btn:hover {
+            color: var(--neon-pink);
+            border-color: var(--neon-pink);
+        }
+
     </style>
 </head>
 <body>
-    <h1>Super Game</h1>
-    <p>This is where the Super Game will be.</p>
-    <a href="/games/">Back to Games</a>
+
+    <a href="/games/" class="back-btn">< BACK</a>
+    <canvas id="game-canvas"></canvas>
+    
+    <div id="ui-layer">
+        <div class="score-display" id="score">0</div>
+
+        <div id="start-screen">
+            <h1>Neon Leap</h1>
+            <p>Timing is everything.</p>
+            <p style="font-size: 0.8rem; opacity: 0.7;">[ CLICK / SPACE / TAP ] to detach and fly.</p>
+            <button id="start-btn">Initialize</button>
+        </div>
+
+        <div id="game-over-screen" class="hidden">
+            <h1>Signal Lost</h1>
+            <p>Orbit Count: <span id="final-score" style="color:white">0</span></p>
+            <button id="restart-btn">Re-Initialize</button>
+        </div>
+    </div>
+
+<script>
+    // --- CONFIGURATION ---
+    const COLORS = {
+        pink: '#FF0055',
+        dim: '#990033',
+        bg: '#050505',
+        white: '#e0e0e0'
+    };
+
+    // --- AUDIO SYSTEM (Simple Synth similar to your main site) ---
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    
+    function playSound(type) {
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+
+        const now = audioCtx.currentTime;
+        
+        if (type === 'jump') {
+            osc.type = 'triangle';
+            osc.frequency.setValueAtTime(220, now);
+            osc.frequency.exponentialRampToValueAtTime(880, now + 0.1);
+            gain.gain.setValueAtTime(0.1, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+            osc.start(now);
+            osc.stop(now + 0.1);
+        } else if (type === 'land') {
+            osc.type = 'sine';
+            osc.frequency.setValueAtTime(880, now);
+            osc.frequency.exponentialRampToValueAtTime(440, now + 0.1);
+            gain.gain.setValueAtTime(0.1, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+            osc.start(now);
+            osc.stop(now + 0.15);
+        } else if (type === 'die') {
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(100, now);
+            osc.frequency.exponentialRampToValueAtTime(10, now + 0.5);
+            gain.gain.setValueAtTime(0.2, now);
+            gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
+            osc.start(now);
+            osc.stop(now + 0.5);
+        }
+    }
+
+    // --- GAME LOGIC ---
+    const canvas = document.getElementById('game-canvas');
+    const ctx = canvas.getContext('2d');
+    const scoreEl = document.getElementById('score');
+    const finalScoreEl = document.getElementById('final-score');
+    const startScreen = document.getElementById('start-screen');
+    const gameOverScreen = document.getElementById('game-over-screen');
+
+    let width, height;
+    let cameraY = 0;
+    
+    let gameState = 'MENU'; // MENU, PLAYING, GAMEOVER
+    let score = 0;
+    let nodes = [];
+    let particles = [];
+    
+    // Player Object
+    const player = {
+        x: 0,
+        y: 0,
+        radius: 8,
+        angle: 0, // Angle relative to current node
+        orbitRadius: 40, // Distance from center of node
+        speed: 0.05, // Orbital speed
+        dir: 1, // 1 or -1 for clockwise/counter
+        currentNode: null,
+        vx: 0,
+        vy: 0,
+        isFlying: false,
+        tail: []
+    };
+
+    function resize() {
+        width = canvas.width = window.innerWidth;
+        height = canvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    // Node Class
+    class Node {
+        constructor(x, y, radius) {
+            this.x = x;
+            this.y = y;
+            this.radius = radius; // Hitbox radius
+            this.visualRadius = 0; 
+            this.pulsing = 0;
+            this.visited = false;
+        }
+
+        draw() {
+            // Pulse effect
+            this.pulsing += 0.05;
+            const glow = Math.sin(this.pulsing) * 5;
+            
+            // Draw Orbit Ring
+            ctx.beginPath();
+            ctx.arc(this.x, this.y - cameraY, player.orbitRadius, 0, Math.PI * 2);
+            ctx.strokeStyle = this.visited ? COLORS.dim : 'rgba(255, 255, 255, 0.1)';
+            ctx.lineWidth = 1;
+            ctx.stroke();
+
+            // Draw Core
+            ctx.beginPath();
+            ctx.arc(this.x, this.y - cameraY, this.radius + (this.visited ? 0 : glow/2), 0, Math.PI * 2);
+            ctx.fillStyle = this.visited ? COLORS.dim : COLORS.pink;
+            ctx.fill();
+            
+            // Glow
+            if (!this.visited) {
+                ctx.shadowBlur = 20 + glow;
+                ctx.shadowColor = COLORS.pink;
+                ctx.stroke();
+                ctx.shadowBlur = 0;
+            }
+        }
+    }
+
+    function initGame() {
+        score = 0;
+        scoreEl.innerText = '0';
+        nodes = [];
+        particles = [];
+        cameraY = 0;
+        
+        // Create first node
+        const startNode = new Node(width/2, height - 200, 15);
+        startNode.visited = true;
+        nodes.push(startNode);
+        
+        // Generate a few more ahead
+        for(let i=1; i<5; i++) {
+            spawnNode();
+        }
+
+        // Setup Player
+        player.currentNode = startNode;
+        player.angle = -Math.PI / 2;
+        player.isFlying = false;
+        player.dir = 1;
+        player.speed = 0.05;
+        player.tail = [];
+        
+        gameState = 'PLAYING';
+        startScreen.classList.add('hidden');
+        gameOverScreen.classList.add('hidden');
+        loop();
+    }
+
+    function spawnNode() {
+        const lastNode = nodes[nodes.length - 1];
+        
+        // Random Position logic
+        const angle = -Math.PI/2 + (Math.random() - 0.5) * 1.5; // Cone upwards
+        const dist = 180 + Math.random() * 100; // Distance between nodes
+        
+        const x = lastNode.x + Math.cos(angle) * dist;
+        const y = lastNode.y + Math.sin(angle) * dist;
+        
+        // Keep within screen bounds (x-axis)
+        const margin = 50;
+        let finalX = Math.max(margin, Math.min(width - margin, x));
+        
+        nodes.push(new Node(finalX, y, 15 + Math.random() * 10));
+    }
+
+    function createExplosion(x, y, color) {
+        for(let i=0; i<20; i++) {
+            particles.push({
+                x: x,
+                y: y,
+                vx: (Math.random() - 0.5) * 10,
+                vy: (Math.random() - 0.5) * 10,
+                life: 1.0,
+                color: color
+            });
+        }
+    }
+
+    function gameOver() {
+        gameState = 'GAMEOVER';
+        playSound('die');
+        createExplosion(player.x, player.y - cameraY, COLORS.pink);
+        finalScoreEl.innerText = score;
+        gameOverScreen.classList.remove('hidden');
+    }
+
+    function input() {
+        if (gameState !== 'PLAYING') return;
+
+        if (!player.isFlying) {
+            // DETACH
+            playSound('jump');
+            player.isFlying = true;
+            
+            // Calculate velocity vector based on tangent
+            // Tangent is perpendicular to radius
+            // x = cx + r*cos(a), y = cy + r*sin(a)
+            // Tangent direction: -sin(a), cos(a) for counter-clockwise?
+            
+            // Wait, standard tangent velocity math:
+            const tangentAngle = player.angle + (player.dir * Math.PI / 2);
+            const speed = 12 + (score * 0.1); // Gets faster
+            
+            player.vx = Math.cos(tangentAngle) * speed;
+            player.vy = Math.sin(tangentAngle) * speed;
+            
+            player.currentNode = null;
+        }
+    }
+
+    // Controls
+    document.addEventListener('keydown', (e) => {
+        if (e.code === 'Space') input();
+    });
+    document.addEventListener('touchstart', (e) => {
+        e.preventDefault(); // stop scrolling
+        input();
+    });
+    document.addEventListener('mousedown', input);
+
+    document.getElementById('start-btn').addEventListener('click', (e) => {
+        e.stopPropagation(); // prevent triggering input immediately
+        initGame();
+    });
+    document.getElementById('restart-btn').addEventListener('click', (e) => {
+        e.stopPropagation();
+        initGame();
+    });
+
+    function update() {
+        if (gameState !== 'PLAYING') return;
+
+        // Player Logic
+        if (!player.isFlying && player.currentNode) {
+            // ORBITING
+            player.angle += player.speed * player.dir;
+            player.x = player.currentNode.x + Math.cos(player.angle) * player.orbitRadius;
+            player.y = player.currentNode.y + Math.sin(player.angle) * player.orbitRadius;
+        } else {
+            // FLYING
+            player.x += player.vx;
+            player.y += player.vy;
+            player.vy += 0.05; // Slight gravity? No, space physics usually linear. Let's add slight drag.
+            
+            // Check Collision with Nodes
+            for (let node of nodes) {
+                if (node === player.currentNode) continue; // Don't hit the one we just left immediately (though we null it)
+                if (node.visited && node !== nodes[nodes.length-1]) continue; // Can land on visited? Maybe not.
+
+                const dx = player.x - node.x;
+                const dy = player.y - node.y;
+                const dist = Math.sqrt(dx*dx + dy*dy);
+
+                // Check intersection with the ORBIT RING, not the core
+                // Tolerance for hitting the ring
+                if (Math.abs(dist - player.orbitRadius) < 15) {
+                    // Success Land
+                    playSound('land');
+                    player.isFlying = false;
+                    player.currentNode = node;
+                    
+                    // Calculate angle of entry
+                    player.angle = Math.atan2(dy, dx);
+                    
+                    // Random direction upon landing
+                    player.dir = Math.random() > 0.5 ? 1 : -1;
+                    
+                    if (!node.visited) {
+                        score++;
+                        scoreEl.innerText = score;
+                        node.visited = true;
+                        spawnNode();
+                        createExplosion(player.x, player.y - cameraY, COLORS.white);
+                    }
+                    break;
+                }
+            }
+
+            // Death Conditions
+            // 1. Off screen horizontal
+            if (player.x < 0 || player.x > width) gameOver();
+            // 2. Off screen bottom (fell too far)
+            if (player.y - cameraY > height + 100) gameOver();
+        }
+
+        // Camera Logic (Smooth follow upwards)
+        const targetY = player.y - height / 1.5;
+        cameraY += (targetY - cameraY) * 0.1;
+
+        // Cleanup nodes
+        if (nodes.length > 10) nodes.shift();
+
+        // Particles
+        for (let i = particles.length - 1; i >= 0; i--) {
+            let p = particles[i];
+            p.x += p.vx;
+            p.y += p.vy;
+            p.life -= 0.05;
+            if(p.life <= 0) particles.splice(i, 1);
+        }
+
+        // Tail
+        player.tail.push({x: player.x, y: player.y});
+        if (player.tail.length > 20) player.tail.shift();
+    }
+
+    function draw() {
+        ctx.fillStyle = COLORS.bg;
+        ctx.fillRect(0, 0, width, height);
+
+        // Draw Nodes
+        nodes.forEach(node => node.draw());
+
+        // Draw Particles
+        particles.forEach(p => {
+            ctx.fillStyle = p.color;
+            ctx.globalAlpha = p.life;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y - cameraY, 3, 0, Math.PI*2);
+            ctx.fill();
+            ctx.globalAlpha = 1.0;
+        });
+
+        if (gameState !== 'GAMEOVER') {
+            // Draw Player Tail
+            ctx.beginPath();
+            for(let i=0; i<player.tail.length; i++) {
+                const p = player.tail[i];
+                if(i===0) ctx.moveTo(p.x, p.y - cameraY);
+                else ctx.lineTo(p.x, p.y - cameraY);
+            }
+            ctx.strokeStyle = COLORS.pink;
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // Draw Player
+            ctx.beginPath();
+            ctx.arc(player.x, player.y - cameraY, player.radius, 0, Math.PI * 2);
+            ctx.fillStyle = '#fff';
+            ctx.fill();
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = '#fff';
+            ctx.stroke();
+            ctx.shadowBlur = 0;
+        }
+
+        requestAnimationFrame(loop);
+    }
+
+    function loop() {
+        update();
+        draw();
+    }
+
+    // Initial render
+    draw();
+
+</script>
 </body>
 </html>
