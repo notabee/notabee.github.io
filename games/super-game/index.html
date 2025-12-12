@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>NEON LEAP // RB</title>
+    <title>SPACE PONG by RB</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&display=swap');
 
@@ -44,15 +44,25 @@
 
         .score-display {
             position: absolute;
-            top: 50px;
+            top: 60px;
             font-size: 4rem;
             color: rgba(255, 255, 255, 0.1);
             font-weight: bold;
             z-index: 0;
         }
 
+        .high-score-display {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            font-size: 1.2rem;
+            color: var(--neon-dim);
+            z-index: 100;
+            text-align: right;
+        }
+
         #start-screen, #game-over-screen {
-            background: rgba(5, 5, 5, 0.85);
+            background: rgba(5, 5, 5, 0.9);
             padding: 40px;
             border: 1px solid var(--neon-pink);
             text-align: center;
@@ -62,6 +72,7 @@
             display: flex;
             flex-direction: column;
             gap: 20px;
+            min-width: 280px;
         }
 
         h1 {
@@ -77,6 +88,14 @@
             color: var(--text-white);
             font-size: 1rem;
             line-height: 1.5;
+            margin: 0;
+        }
+
+        .stat-box {
+            border-top: 1px solid var(--neon-dim);
+            border-bottom: 1px solid var(--neon-dim);
+            padding: 10px 0;
+            margin: 10px 0;
         }
 
         button {
@@ -113,10 +132,18 @@
             pointer-events: auto;
             border: 1px solid var(--neon-dim);
             padding: 5px 10px;
+            transition: all 0.3s;
         }
         .back-btn:hover {
             color: var(--neon-pink);
             border-color: var(--neon-pink);
+        }
+
+        .speed-indicator {
+            font-size: 0.8rem;
+            color: var(--neon-dim);
+            margin-top: 5px;
+            opacity: 0.7;
         }
 
     </style>
@@ -128,6 +155,7 @@
     
     <div id="ui-layer">
         <div class="score-display" id="score">0</div>
+        <div class="high-score-display">BEST: <span id="hud-high-score">0</span></div>
 
         <div id="start-screen">
             <h1>Neon Leap</h1>
@@ -138,7 +166,10 @@
 
         <div id="game-over-screen" class="hidden">
             <h1>Signal Lost</h1>
-            <p>Orbit Count: <span id="final-score" style="color:white">0</span></p>
+            <div class="stat-box">
+                <p>Score: <span id="final-score" style="color:white; font-weight:bold;">0</span></p>
+                <p style="font-size: 0.9rem; margin-top:5px;">Best: <span id="final-high-score" style="color:var(--neon-pink)">0</span></p>
+            </div>
             <button id="restart-btn">Re-Initialize</button>
         </div>
     </div>
@@ -152,7 +183,12 @@
         white: '#e0e0e0'
     };
 
-    // --- AUDIO SYSTEM (Simple Synth similar to your main site) ---
+    // DEFINING CONSTANTS
+    const INITIAL_ORBIT_SPEED = 0.05; 
+    const SPEED_INCREMENT = 0.008; 
+    const SPEED_THRESHOLD = 5;
+
+    // --- AUDIO SYSTEM ---
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
     
     function playSound(type) {
@@ -188,6 +224,14 @@
             gain.gain.exponentialRampToValueAtTime(0.001, now + 0.5);
             osc.start(now);
             osc.stop(now + 0.5);
+        } else if (type === 'speedup') {
+            osc.type = 'square';
+            osc.frequency.setValueAtTime(440, now);
+            osc.frequency.linearRampToValueAtTime(880, now + 0.1);
+            gain.gain.setValueAtTime(0.05, now);
+            gain.gain.linearRampToValueAtTime(0, now + 0.1);
+            osc.start(now);
+            osc.stop(now + 0.1);
         }
     }
 
@@ -195,32 +239,26 @@
     const canvas = document.getElementById('game-canvas');
     const ctx = canvas.getContext('2d');
     const scoreEl = document.getElementById('score');
+    const hudHighScoreEl = document.getElementById('hud-high-score');
     const finalScoreEl = document.getElementById('final-score');
+    const finalHighScoreEl = document.getElementById('final-high-score');
     const startScreen = document.getElementById('start-screen');
     const gameOverScreen = document.getElementById('game-over-screen');
 
     let width, height;
     let cameraY = 0;
     
-    let gameState = 'MENU'; // MENU, PLAYING, GAMEOVER
+    let gameState = 'MENU'; 
     let score = 0;
+    let highScore = localStorage.getItem('rb_neon_highscore') || 0;
+    
     let nodes = [];
     let particles = [];
     
-    // Player Object
-    const player = {
-        x: 0,
-        y: 0,
-        radius: 8,
-        angle: 0, // Angle relative to current node
-        orbitRadius: 40, // Distance from center of node
-        speed: 0.05, // Orbital speed
-        dir: 1, // 1 or -1 for clockwise/counter
-        currentNode: null,
-        vx: 0,
-        vy: 0,
-        isFlying: false,
-        tail: []
+    // Global player object
+    let player = {
+        x: 0, y: 0, radius: 8, angle: 0, orbitRadius: 40, speed: INITIAL_ORBIT_SPEED, 
+        dir: 1, currentNode: null, vx: 0, vy: 0, isFlying: false, tail: []
     };
 
     function resize() {
@@ -229,37 +267,34 @@
     }
     window.addEventListener('resize', resize);
     resize();
+    
+    hudHighScoreEl.innerText = highScore;
 
-    // Node Class
     class Node {
         constructor(x, y, radius) {
             this.x = x;
             this.y = y;
-            this.radius = radius; // Hitbox radius
+            this.radius = radius; 
             this.visualRadius = 0; 
             this.pulsing = 0;
             this.visited = false;
         }
 
         draw() {
-            // Pulse effect
             this.pulsing += 0.05;
             const glow = Math.sin(this.pulsing) * 5;
             
-            // Draw Orbit Ring
             ctx.beginPath();
             ctx.arc(this.x, this.y - cameraY, player.orbitRadius, 0, Math.PI * 2);
             ctx.strokeStyle = this.visited ? COLORS.dim : 'rgba(255, 255, 255, 0.1)';
             ctx.lineWidth = 1;
             ctx.stroke();
 
-            // Draw Core
             ctx.beginPath();
             ctx.arc(this.x, this.y - cameraY, this.radius + (this.visited ? 0 : glow/2), 0, Math.PI * 2);
             ctx.fillStyle = this.visited ? COLORS.dim : COLORS.pink;
             ctx.fill();
             
-            // Glow
             if (!this.visited) {
                 ctx.shadowBlur = 20 + glow;
                 ctx.shadowColor = COLORS.pink;
@@ -270,71 +305,92 @@
     }
 
     function initGame() {
+        // 1. RESET SCORE
         score = 0;
         scoreEl.innerText = '0';
+        
+        // 2. RESET ENTITIES
         nodes = [];
         particles = [];
         cameraY = 0;
         
-        // Create first node
+        // 3. HARD RESET PLAYER
+        // We recreate the object entirely to ensure no old properties stick around
+        player = {
+            x: 0,
+            y: 0,
+            radius: 8,
+            angle: -Math.PI / 2, 
+            orbitRadius: 40,
+            
+            // *** CRITICAL FIX: HARDCODED RESET ***
+            speed: 0.05, 
+            
+            dir: 1,
+            currentNode: null,
+            vx: 0,
+            vy: 0,
+            isFlying: false,
+            tail: []
+        };
+
+        // 4. SETUP LEVEL
         const startNode = new Node(width/2, height - 200, 15);
         startNode.visited = true;
         nodes.push(startNode);
         
-        // Generate a few more ahead
+        player.currentNode = startNode;
+        
         for(let i=1; i<5; i++) {
             spawnNode();
         }
 
-        // Setup Player
-        player.currentNode = startNode;
-        player.angle = -Math.PI / 2;
-        player.isFlying = false;
-        player.dir = 1;
-        player.speed = 0.05;
-        player.tail = [];
-        
+        // 5. START LOOP
         gameState = 'PLAYING';
         startScreen.classList.add('hidden');
         gameOverScreen.classList.add('hidden');
-        loop();
+        
+        // Ensure we don't stack multiple loops
+        // (requestAnimationFrame handles itself, but logic needs to be clean)
     }
 
     function spawnNode() {
         const lastNode = nodes[nodes.length - 1];
-        
-        // Random Position logic
-        const angle = -Math.PI/2 + (Math.random() - 0.5) * 1.5; // Cone upwards
-        const dist = 180 + Math.random() * 100; // Distance between nodes
-        
+        const angle = -Math.PI/2 + (Math.random() - 0.5) * 1.5; 
+        const dist = 180 + Math.random() * 100; 
         const x = lastNode.x + Math.cos(angle) * dist;
         const y = lastNode.y + Math.sin(angle) * dist;
-        
-        // Keep within screen bounds (x-axis)
         const margin = 50;
         let finalX = Math.max(margin, Math.min(width - margin, x));
-        
         nodes.push(new Node(finalX, y, 15 + Math.random() * 10));
     }
 
     function createExplosion(x, y, color) {
         for(let i=0; i<20; i++) {
             particles.push({
-                x: x,
-                y: y,
+                x: x, y: y,
                 vx: (Math.random() - 0.5) * 10,
                 vy: (Math.random() - 0.5) * 10,
-                life: 1.0,
-                color: color
+                life: 1.0, color: color
             });
         }
     }
 
     function gameOver() {
+        if(gameState === 'GAMEOVER') return; // Prevent double trigger
         gameState = 'GAMEOVER';
         playSound('die');
         createExplosion(player.x, player.y - cameraY, COLORS.pink);
+        
+        if (score > highScore) {
+            highScore = score;
+            localStorage.setItem('rb_neon_highscore', highScore);
+        }
+
         finalScoreEl.innerText = score;
+        finalHighScoreEl.innerText = highScore;
+        hudHighScoreEl.innerText = highScore;
+
         gameOverScreen.classList.remove('hidden');
     }
 
@@ -342,40 +398,39 @@
         if (gameState !== 'PLAYING') return;
 
         if (!player.isFlying) {
-            // DETACH
             playSound('jump');
             player.isFlying = true;
             
-            // Calculate velocity vector based on tangent
-            // Tangent is perpendicular to radius
-            // x = cx + r*cos(a), y = cy + r*sin(a)
-            // Tangent direction: -sin(a), cos(a) for counter-clockwise?
-            
-            // Wait, standard tangent velocity math:
             const tangentAngle = player.angle + (player.dir * Math.PI / 2);
-            const speed = 12 + (score * 0.1); // Gets faster
             
-            player.vx = Math.cos(tangentAngle) * speed;
-            player.vy = Math.sin(tangentAngle) * speed;
+            // Launch speed logic
+            // Base 12, plus a tiny bit per score so it feels responsive
+            // Resetting score to 0 in initGame guarantees this resets too
+            const launchSpeed = 12 + (score * 0.05); 
             
+            player.vx = Math.cos(tangentAngle) * launchSpeed;
+            player.vy = Math.sin(tangentAngle) * launchSpeed;
             player.currentNode = null;
         }
     }
 
-    // Controls
+    // Input Listeners
     document.addEventListener('keydown', (e) => {
         if (e.code === 'Space') input();
     });
-    document.addEventListener('touchstart', (e) => {
-        e.preventDefault(); // stop scrolling
+    
+    // Using 'pointerdown' is better than mousedown/touch as it covers both
+    canvas.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
         input();
     });
-    document.addEventListener('mousedown', input);
 
     document.getElementById('start-btn').addEventListener('click', (e) => {
-        e.stopPropagation(); // prevent triggering input immediately
+        e.stopPropagation(); 
         initGame();
+        loop(); // Start the loop only once here or ensure it handles it
     });
+    
     document.getElementById('restart-btn').addEventListener('click', (e) => {
         e.stopPropagation();
         initGame();
@@ -384,45 +439,45 @@
     function update() {
         if (gameState !== 'PLAYING') return;
 
-        // Player Logic
+        // ORBITING
         if (!player.isFlying && player.currentNode) {
-            // ORBITING
             player.angle += player.speed * player.dir;
             player.x = player.currentNode.x + Math.cos(player.angle) * player.orbitRadius;
             player.y = player.currentNode.y + Math.sin(player.angle) * player.orbitRadius;
-        } else {
-            // FLYING
+        } 
+        // FLYING
+        else {
             player.x += player.vx;
             player.y += player.vy;
-            player.vy += 0.05; // Slight gravity? No, space physics usually linear. Let's add slight drag.
+            player.vy += 0.05; 
             
-            // Check Collision with Nodes
+            // Collision
             for (let node of nodes) {
-                if (node === player.currentNode) continue; // Don't hit the one we just left immediately (though we null it)
-                if (node.visited && node !== nodes[nodes.length-1]) continue; // Can land on visited? Maybe not.
+                if (node === player.currentNode) continue; 
+                if (node.visited && node !== nodes[nodes.length-1]) continue; 
 
                 const dx = player.x - node.x;
                 const dy = player.y - node.y;
                 const dist = Math.sqrt(dx*dx + dy*dy);
 
-                // Check intersection with the ORBIT RING, not the core
-                // Tolerance for hitting the ring
                 if (Math.abs(dist - player.orbitRadius) < 15) {
-                    // Success Land
                     playSound('land');
                     player.isFlying = false;
                     player.currentNode = node;
-                    
-                    // Calculate angle of entry
                     player.angle = Math.atan2(dy, dx);
-                    
-                    // Random direction upon landing
                     player.dir = Math.random() > 0.5 ? 1 : -1;
                     
                     if (!node.visited) {
                         score++;
                         scoreEl.innerText = score;
                         node.visited = true;
+
+                        // SPEED INCREASE LOGIC
+                        if (score > 0 && score % SPEED_THRESHOLD === 0) {
+                            player.speed += SPEED_INCREMENT;
+                            playSound('speedup');
+                        }
+
                         spawnNode();
                         createExplosion(player.x, player.y - cameraY, COLORS.white);
                     }
@@ -430,18 +485,13 @@
                 }
             }
 
-            // Death Conditions
-            // 1. Off screen horizontal
             if (player.x < 0 || player.x > width) gameOver();
-            // 2. Off screen bottom (fell too far)
             if (player.y - cameraY > height + 100) gameOver();
         }
 
-        // Camera Logic (Smooth follow upwards)
         const targetY = player.y - height / 1.5;
         cameraY += (targetY - cameraY) * 0.1;
 
-        // Cleanup nodes
         if (nodes.length > 10) nodes.shift();
 
         // Particles
@@ -462,10 +512,8 @@
         ctx.fillStyle = COLORS.bg;
         ctx.fillRect(0, 0, width, height);
 
-        // Draw Nodes
         nodes.forEach(node => node.draw());
 
-        // Draw Particles
         particles.forEach(p => {
             ctx.fillStyle = p.color;
             ctx.globalAlpha = p.life;
@@ -476,7 +524,6 @@
         });
 
         if (gameState !== 'GAMEOVER') {
-            // Draw Player Tail
             ctx.beginPath();
             for(let i=0; i<player.tail.length; i++) {
                 const p = player.tail[i];
@@ -487,7 +534,6 @@
             ctx.lineWidth = 2;
             ctx.stroke();
 
-            // Draw Player
             ctx.beginPath();
             ctx.arc(player.x, player.y - cameraY, player.radius, 0, Math.PI * 2);
             ctx.fillStyle = '#fff';
@@ -501,12 +547,15 @@
         requestAnimationFrame(loop);
     }
 
+    // Flag to ensure loop only starts once
+    let loopStarted = false;
     function loop() {
+        if(!loopStarted) loopStarted = true;
         update();
         draw();
     }
-
-    // Initial render
+    
+    // Start initial draw (static)
     draw();
 
 </script>
