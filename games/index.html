@@ -1,14 +1,87 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>My Games</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RB's Games</title>
+    <style>
+        /* --- CSS STYLING (REUSE FROM YOUR INDEX.HTML) --- */
+        @import url('https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400&display=swap');
+
+        :root {
+            --neon-pink: #FF0055; /*  Your neon pink */
+            --neon-dim: #990033;  /*  Your neon dim */
+            --text-white: #e0e0e0; /*  Your text white */
+            --bg-black: #050505;   /*  Your background black */
+        }
+
+        body {
+            margin: 0;
+            background-color: var(--bg-black);
+            font-family: 'Courier Prime', 'Courier New', monospace;
+            color: var(--neon-pink);
+            /* No overflow:hidden here, since this is a menu */
+        }
+
+        main {
+            position: relative;
+            z-index: 10;
+            width: 100%;
+            max-width: 800px;
+            margin: 0 auto;
+            padding-top: 15vh; /* Adjust for menu */
+            padding-bottom: 50px;
+            padding-left: 20px;
+            padding-right: 20px;
+            box-sizing: border-box;
+            /* No opacity/transition, show the menu immediately */
+            /* Remove pointer-events */
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            text-shadow: 0 0 10px var(--neon-pink);
+        }
+
+        ul {
+            list-style: none; /* Remove bullet points */
+            padding: 0;
+        }
+
+        li {
+            margin-bottom: 10px;
+        }
+
+        a {
+            color: var(--neon-pink);
+            text-decoration: none;  /* Remove underlines */
+            display: block;  /* Make the whole area clickable */
+            padding: 10px;
+            border: 1px solid var(--neon-pink);
+            text-align: center;
+            transition: background-color 0.3s ease; /* Add a hover effect */
+        }
+
+        a:hover {
+            background-color: var(--neon-dim); /* Darker on hover */
+        }
+
+        .back-link {
+            margin-top: 20px;
+        }
+
+    </style>
 </head>
 <body>
-    <h1>RB's Pixel Hockey Arcade</h1>
-    <ul>
-        <li><a href="/games/super-game">Super Game</a></li>
-        <li><a href="/games/another-game">Another Game</a></li>
-        <li><a href="/">Back to Home</a></li>
-    </ul>
+    <main>
+        <h1>RB's Pixel Hockey Arcade</h1>
+        <ul>
+            <li><a href="/games/super-game/">Super Game</a></li>  <!--  Add the trailing slash to the href -->
+            <li><a href="/games/another-game/">Another Game</a></li> <!--  Add the trailing slash to the href -->
+        </ul>
+        <a class="back-link" href="/">Back to Home</a>
+    </main>
 </body>
 </html>
