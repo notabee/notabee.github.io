@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Space Grid</title>
+    <title>Space Grid by RB</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&display=swap');
 
@@ -12,6 +12,7 @@
             --neon-purple: #bc13fe;
             --danger: #ff0055;
             --bg: #030305;
+            --text-white: #ffffff;
         }
 
         body {
@@ -21,7 +22,7 @@
             overflow: hidden;
             touch-action: none;
             user-select: none;
-            cursor: pointer;
+            cursor: crosshair;
         }
 
         #game-canvas { display: block; width: 100%; height: 100vh; }
@@ -33,10 +34,9 @@
             display: flex; flex-direction: column; align-items: center;
         }
 
-        /* Energy Bar Styling */
         #energy-container {
             position: absolute;
-            top: 20px; width: 60%; height: 6px;
+            top: 20px; width: 50%; height: 4px;
             background: rgba(255, 255, 255, 0.1);
             border: 1px solid var(--neon-blue);
             box-shadow: 0 0 10px rgba(0, 243, 255, 0.2);
@@ -54,45 +54,62 @@
             display: flex; justify-content: space-between;
             color: var(--neon-blue); font-size: 0.8rem;
             z-index: 10;
+            text-shadow: 0 0 5px var(--neon-blue);
         }
 
         #score-big {
             position: absolute;
-            top: 15%; font-size: 5rem;
-            color: rgba(255, 255, 255, 0.05);
+            top: 10%; font-size: 5rem;
+            color: rgba(255, 255, 255, 0.1);
             font-weight: bold;
             z-index: 0;
         }
 
         .screen {
             background: rgba(3, 3, 5, 0.95);
-            padding: 40px; border: 1px solid var(--neon-blue);
+            padding: 30px; border: 1px solid var(--neon-blue);
             text-align: center; pointer-events: auto;
-            backdrop-filter: blur(10px);
+            backdrop-filter: blur(8px);
             display: flex; flex-direction: column; gap: 15px;
-            margin-top: 25vh;
+            margin-top: 15vh;
             z-index: 20;
-            box-shadow: 0 0 30px rgba(0, 243, 255, 0.1);
+            box-shadow: 0 0 40px rgba(0, 243, 255, 0.15);
+            max-width: 90%;
+            width: 320px;
         }
 
-        h1 { color: var(--neon-blue); text-transform: uppercase; letter-spacing: 5px; margin: 0; }
+        h1 { color: var(--neon-blue); text-transform: uppercase; letter-spacing: 5px; margin: 0; font-size: 1.5rem; }
         .hidden { display: none !important; }
         
         button {
             background: transparent; color: var(--neon-blue);
             border: 1px solid var(--neon-blue); padding: 15px 30px;
             font-family: inherit; cursor: pointer; text-transform: uppercase;
-            font-weight: bold;
+            font-weight: bold; transition: 0.2s;
         }
         button:hover { background: var(--neon-blue); color: #000; box-shadow: 0 0 20px var(--neon-blue); }
 
-        #combo-alert {
-            position: absolute; bottom: 20%; color: var(--neon-purple);
-            font-weight: bold; font-size: 1.5rem; opacity: 0;
-            transition: opacity 0.5s;
-            text-shadow: 0 0 10px var(--neon-purple);
-            z-index: 10;
+        /* Floating Text for Score */
+        .float-text {
+            position: absolute;
+            font-weight: bold;
+            font-size: 1.2rem;
+            pointer-events: none;
+            animation: floatUp 1s forwards;
+            text-shadow: 0 0 5px currentColor;
         }
+        @keyframes floatUp {
+            0% { transform: translateY(0) scale(1); opacity: 1; }
+            100% { transform: translateY(-50px) scale(1.5); opacity: 0; }
+        }
+
+        #snapshot-container {
+            width: 100%; height: 200px; background: #000; border: 1px solid #333;
+            margin: 5px 0; display: flex; justify-content: center; align-items: center; position: relative;
+        }
+        #snapshot-canvas { display: block; max-width: 100%; max-height: 100%; }
+        .snap-label { position: absolute; bottom: 5px; right: 8px; font-size: 0.6rem; color: var(--neon-blue); opacity: 0.7; }
+
     </style>
 </head>
 <body>
@@ -102,23 +119,35 @@
     <div id="ui-layer">
         <div id="energy-container"><div id="energy-bar"></div></div>
         <div class="stats-top">
-            <div>GRID POWER: <span id="current-score">0</span></div>
+            <div>STARS: <span id="current-score">0</span></div>
             <div>STABILITY: <span id="stability-percent">100</span>%</div>
         </div>
 
         <div id="score-big">0</div>
-        <div id="combo-alert">LONG LINK +50%</div>
 
         <div id="start-screen" class="screen">
             <h1>Space Grid</h1>
-            <p style="color: #e0e0e0">Link nodes to power the grid.</p>
-            <p style="color: var(--neon-purple); font-size: 0.8rem;">ENERGY DRAINS CONSTANTLY.<br>DONT STAY ON ONE NODE TOO LONG.</p>
-            <button id="start-btn">Initialize Grid</button>
+            <p style="color: #e0e0e0">Build the network.</p>
+            
+            <!-- Updated Instruction Box -->
+            <div style="font-size: 0.8rem; text-align: left; background: rgba(255,255,255,0.05); padding: 10px; border-radius: 4px; color: var(--text-white);">
+                <span style="color:var(--neon-blue)">BLUE LINK</span> = +1 Star (Safe)<br>
+                <span style="color:var(--danger)">PINK LINK</span> = +3 Stars (Long Range)
+            </div>
+
+            <p style="color: var(--neon-purple); font-size: 0.75rem; margin-top: 10px;">
+                Judge the distance. Take the risk.
+            </p>
+            <button id="start-btn">Initialize</button>
         </div>
 
         <div id="game-over-screen" class="screen hidden">
-            <h1 style="color: var(--danger)">GRID COLLAPSE</h1>
-            <p style="color: #fff">Total Power Generated: <span id="final-score">0</span></p>
+            <h1 style="color: var(--danger)">SIGNAL LOST</h1>
+            <div id="snapshot-container">
+                <canvas id="snapshot-canvas"></canvas>
+                <div class="snap-label">SECTOR MAP</div>
+            </div>
+            <p style="color: #fff; margin:0;">Energy Collected: <span id="final-score">0</span></p>
             <button id="restart-btn">Re-Initialize</button>
         </div>
     </div>
@@ -130,82 +159,80 @@
     // --- Config ---
     const COLORS = { blue: '#00f3ff', purple: '#bc13fe', pink: '#ff0055', bg: '#030305' };
     const G = {
-        rotSpeed: 0.08,      // Speed of spin
-        flySpeed: 18,        // Speed of flight
-        energyDrain: 0.15,   // Energy loss per frame
-        nodeOverloadRate: 0.008, // How fast stability drops
-        catchRadius: 35      // Hitbox size
+        rotSpeed: 0.05,       
+        flySpeed: 16,        
+        energyDrain: 0.10,   
+        nodeOverloadRate: 0.005, 
+        catchRadius: 40,
+        longDistThreshold: 350 
     };
 
-    let width, height, score, energy, nodes, lines, camera, player, gameState, requestID;
+    let width, height, score, energy, nodes, lines, stars, camera, player, gameState, requestID;
 
-    // --- Audio System ---
+    // --- Audio ---
     const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    
     function beep(freq, type, duration) {
         if (audioCtx.state === 'suspended') audioCtx.resume();
         const osc = audioCtx.createOscillator();
         const gain = audioCtx.createGain();
-        osc.type = type; 
-        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        osc.type = type; osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
         gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
         gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
-        osc.connect(gain); 
-        gain.connect(audioCtx.destination);
-        osc.start(); 
-        osc.stop(audioCtx.currentTime + duration);
+        osc.connect(gain); gain.connect(audioCtx.destination);
+        osc.start(); osc.stop(audioCtx.currentTime + duration);
     }
 
     // --- Classes ---
+    class Star {
+        constructor() {
+            this.x = (Math.random() - 0.5) * 4000;
+            this.y = (Math.random() - 0.5) * 4000;
+            this.z = Math.random() * 2 + 0.5; 
+            this.size = Math.random() * 1.5;
+        }
+        draw() {
+            const sx = (this.x - camera.x * (1/this.z)) + width/2;
+            const sy = (this.y - camera.y * (1/this.z)) + height/2;
+            const wrapW = width * 2; const wrapH = height * 2;
+            const dx = (sx % wrapW + wrapW) % wrapW - width/2;
+            const dy = (sy % wrapH + wrapH) % wrapH - height/2;
+            ctx.fillStyle = `rgba(255,255,255,${0.3 * this.z})`;
+            ctx.beginPath(); ctx.arc(dx + width/2, dy + height/2, this.size, 0, Math.PI*2); ctx.fill();
+        }
+    }
+
     class Node {
         constructor(x, y) {
-            this.x = x; 
-            this.y = y;
-            this.stability = 1.0; 
-            this.connected = false;
+            this.x = x; this.y = y;
+            this.stability = 1.0; this.connected = false;
             this.pulse = Math.random() * Math.PI;
         }
         draw() {
-            this.pulse += 0.1;
+            this.pulse += 0.05;
             const screenX = this.x - camera.x;
             const screenY = this.y - camera.y;
-            
-            // Draw Danger Zone (Overload Indicator)
+            if (screenX < -100 || screenX > width + 100 || screenY < -100 || screenY > height + 100) return;
+
+            // Danger Zone
             if (player.targetNode === this && player.state === 'ORBIT') {
                 const shake = (1 - this.stability) * 3;
-                const sx = screenX + (Math.random() - 0.5) * shake;
-                const sy = screenY + (Math.random() - 0.5) * shake;
-
                 ctx.beginPath();
-                ctx.arc(sx, sy, 45, 0, Math.PI*2);
+                ctx.arc(screenX + (Math.random()-.5)*shake, screenY + (Math.random()-.5)*shake, 50, 0, Math.PI*2);
                 ctx.strokeStyle = `rgba(255, 0, 85, ${1 - this.stability})`;
-                ctx.setLineDash([5, 5]);
-                ctx.lineWidth = 2;
-                ctx.stroke();
-                ctx.setLineDash([]);
-            }
-
-            // Outer Catch Ring
-            if (!this.connected && player.state === 'FLIGHT') {
-                 ctx.beginPath();
-                 ctx.arc(screenX, screenY, G.catchRadius, 0, Math.PI*2);
-                 ctx.strokeStyle = 'rgba(0, 243, 255, 0.1)';
-                 ctx.stroke();
+                ctx.setLineDash([5, 5]); ctx.lineWidth = 2; ctx.stroke(); ctx.setLineDash([]);
             }
 
             // Node Body
             ctx.beginPath();
             ctx.arc(screenX, screenY, 12, 0, Math.PI*2);
-            ctx.fillStyle = this.connected ? COLORS.blue : '#111';
+            ctx.fillStyle = this.connected ? COLORS.blue : '#0a0a0a';
             ctx.fill();
             ctx.strokeStyle = this.stability < 0.4 ? COLORS.pink : COLORS.blue;
             ctx.lineWidth = 2;
             ctx.stroke();
             
-            // Glow
             if (this.connected) {
-                const glow = 10 + Math.sin(this.pulse) * 5;
-                ctx.shadowBlur = glow; ctx.shadowColor = COLORS.blue;
+                ctx.shadowBlur = 10 + Math.sin(this.pulse) * 5; ctx.shadowColor = COLORS.blue;
                 ctx.stroke(); ctx.shadowBlur = 0;
             }
         }
@@ -221,105 +248,101 @@
 
     function init() {
         if(requestID) cancelAnimationFrame(requestID);
-        
-        score = 0; 
-        energy = 100; 
-        nodes = []; 
-        lines = []; 
+        score = 0; energy = 100; nodes = []; lines = []; stars = [];
         camera = { x: 0, y: 0 };
         gameState = 'PLAYING';
 
-        // Setup first nodes
-        const startNode = new Node(width/2, height/2 + 200);
+        for(let i=0; i<100; i++) stars.push(new Star());
+
+        const startNode = new Node(width/2, height/2);
         startNode.connected = true;
         nodes.push(startNode);
         
         player = {
-            x: 0, y: 0, 
+            x: width/2, y: height/2, 
             state: 'ORBIT', 
             targetNode: startNode, 
-            angle: -Math.PI/2, 
-            dir: 1,
-            vx: 0, vy: 0
+            angle: Math.random() * Math.PI * 2, 
+            dir: 1, vx: 0, vy: 0
         };
 
-        spawnNode(); 
-        spawnNode();
-        spawnNode();
-        
-        // UI Reset
+        spawnCluster(startNode.x, startNode.y);
+
         document.getElementById('start-screen').classList.add('hidden');
         document.getElementById('game-over-screen').classList.add('hidden');
         document.getElementById('score-big').innerText = "0";
         document.getElementById('current-score').innerText = "0";
         document.getElementById('energy-bar').style.width = '100%';
-        
-        // Start Loop
         loop();
     }
 
-    function spawnNode() {
-        const last = nodes[nodes.length - 1];
-        // Generate upward mostly (-PI/2)
-        const angle = -Math.PI/2 + (Math.random()-0.5) * 1.8;
-        const dist = 220 + Math.random() * 100;
-        
-        // Clamp X to keep play area vaguely centered
-        let tx = last.x + Math.cos(angle)*dist;
-        let ty = last.y + Math.sin(angle)*dist;
-        
-        nodes.push(new Node(tx, ty));
-        
-        // Cleanup old nodes
-        if(nodes.length > 8) {
-             nodes.shift();
-             if(lines.length > 8) lines.shift();
+    function spawnCluster(centerX, centerY) {
+        const count = 3 + Math.floor(Math.random() * 3);
+        for(let i=0; i<count; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            // Mixed distances: Some close (200-300), some far (400-500)
+            const type = Math.random();
+            let dist;
+            if(type < 0.4) dist = 200 + Math.random() * 100; // Close
+            else dist = 400 + Math.random() * 150; // Far (High Score)
+            
+            const nx = centerX + Math.cos(angle) * dist;
+            const ny = centerY + Math.sin(angle) * dist;
+            
+            let overlap = false;
+            for(let n of nodes) { if(Math.hypot(n.x - nx, n.y - ny) < 100) overlap = true; }
+            if(!overlap) nodes.push(new Node(nx, ny));
+        }
+
+        // Cleanup
+        if(nodes.length > 50) {
+            const clean = nodes.filter(n => n === player.targetNode || n.connected || Math.hypot(n.x - centerX, n.y - centerY) < 2000);
+            nodes = clean;
         }
     }
 
     function handleInput(e) {
         if (e) e.stopPropagation();
-        
         if (gameState !== 'PLAYING') return;
 
         if (player.state === 'ORBIT') {
-            // Calculate Release Vector (Tangent)
             const tangent = player.angle + (player.dir * Math.PI/2);
             player.vx = Math.cos(tangent) * G.flySpeed;
             player.vy = Math.sin(tangent) * G.flySpeed;
-            
             player.state = 'FLIGHT';
-            player.targetNode = null; // Detach
-            
+            player.targetNode = null;
             beep(400, 'triangle', 0.1);
         }
     }
 
-    function gameOver() {
-        if (gameState === 'GAMEOVER') return;
-        gameState = 'GAMEOVER';
-        beep(100, 'sawtooth', 0.5);
-        document.getElementById('final-score').innerText = Math.floor(score);
-        document.getElementById('game-over-screen').classList.remove('hidden');
+    function createFloatText(x, y, text, color) {
+        const el = document.createElement('div');
+        el.className = 'float-text';
+        el.innerText = text;
+        
+        // Simple positioning relative to camera center
+        const screenX = x - camera.x;
+        const screenY = y - camera.y;
+        
+        el.style.left = (screenX) + 'px';
+        el.style.top = (screenY) + 'px';
+        el.style.color = color;
+        
+        document.getElementById('ui-layer').appendChild(el);
+        setTimeout(() => el.remove(), 1000);
     }
 
     function update() {
-        // 1. Energy Decay
         energy -= G.energyDrain;
         if (energy <= 0) gameOver();
         document.getElementById('energy-bar').style.width = Math.max(0, energy) + '%';
 
-        // 2. Player Physics
         if (player.state === 'ORBIT') {
-            // Spin
             player.angle += G.rotSpeed * player.dir;
-            
-            // Lock position to orbit
-            const orbitDist = 40;
+            const orbitDist = 45;
             player.x = player.targetNode.x + Math.cos(player.angle) * orbitDist;
             player.y = player.targetNode.y + Math.sin(player.angle) * orbitDist;
             
-            // Node Instability
             player.targetNode.stability -= G.nodeOverloadRate;
             if (player.targetNode.stability <= 0) gameOver();
             document.getElementById('stability-percent').innerText = Math.max(0, Math.floor(player.targetNode.stability * 100));
@@ -328,101 +351,134 @@
             player.x += player.vx;
             player.y += player.vy;
 
-            // Check Collisions with unvisited nodes
             let hit = false;
-            for (let node of nodes) {
-                if (node.connected) continue; // Skip already visited
+            let nearestDist = 9999;
 
+            for (let node of nodes) {
                 const d = Math.hypot(player.x - node.x, player.y - node.y);
+                if (d < nearestDist) nearestDist = d;
+                if (node.connected) continue;
+
                 if (d < G.catchRadius) {
-                    // --- SUCCESSFUL LINK ---
                     hit = true;
+                    const prevNode = nodes.findLast(n => n.connected && n !== node);
                     
-                    // Create Line logic
-                    // We need coordinates of where we came FROM. 
-                    // Since lines array stores history, the last visited node is nodes[current_index - 1] roughly.
-                    // Easier: just store last coordinates when launching? 
-                    // Let's use the last connected node in the array.
-                    const prevNode = nodes.slice().reverse().find(n => n.connected && n !== node);
-                    
-                    let distScore = 0;
+                    let distRaw = 0;
                     if(prevNode) {
-                        lines.push({x1: prevNode.x, y1: prevNode.y, x2: node.x, y2: node.y});
-                        distScore = Math.hypot(node.x - prevNode.x, node.y - prevNode.y);
+                        distRaw = Math.hypot(node.x - prevNode.x, node.y - prevNode.y);
+                        
+                        // Decide color based on distance
+                        const isLong = distRaw > G.longDistThreshold;
+                        const lineColor = isLong ? COLORS.pink : COLORS.blue;
+                        
+                        lines.push({
+                            x1: prevNode.x, 
+                            y1: prevNode.y, 
+                            x2: node.x, 
+                            y2: node.y, 
+                            color: lineColor
+                        });
+                        
+                        // Scoring
+                        let starsGained = isLong ? 3 : 1;
+                        score += starsGained;
+                        energy = Math.min(100, energy + (starsGained * 15));
+                        
+                        createFloatText(node.x, node.y, "+" + starsGained + (starsGained>1?" STARS":" STAR"), isLong ? COLORS.pink : COLORS.blue);
+                    } else {
+                        // First jump (rare case if loop starts unconnected)
+                        node.connected = true;
                     }
 
-                    // Score & Energy Logic
-                    const energyGain = (distScore / 8); 
-                    energy = Math.min(100, energy + energyGain);
-                    score += distScore;
+                    document.getElementById('current-score').innerText = score;
+                    document.getElementById('score-big').innerText = score;
 
-                    // UI Updates
-                    if (energyGain > 30) showCombo("SURGE +" + Math.floor(energyGain));
-                    document.getElementById('current-score').innerText = Math.floor(score);
-                    document.getElementById('score-big').innerText = Math.floor(score);
-
-                    // Attach Player
                     node.connected = true;
                     player.targetNode = node;
                     player.state = 'ORBIT';
                     
-                    // Calculate smooth entry angle
-                    // Angle from node center to player
-                    player.angle = Math.atan2(player.y - node.y, player.x - node.x);
-                    
-                    // Reverse Direction
-                    player.dir *= -1;
+                    const dx = player.x - node.x;
+                    const dy = player.y - node.y;
+                    player.angle = Math.atan2(dy, dx);
+                    const cross = (player.vx * dy - player.vy * dx);
+                    player.dir = cross > 0 ? 1 : -1;
 
                     beep(800, 'sine', 0.1);
-                    spawnNode();
+                    spawnCluster(node.x, node.y);
                     break; 
                 }
             }
 
-            // Death if lost in space
-            if (!hit) {
-                // Find distance to nearest node
-                let nearest = 9999;
-                nodes.forEach(n => {
-                    let d = Math.hypot(player.x - n.x, player.y - n.y);
-                    if(d < nearest) nearest = d;
-                });
-                if(nearest > 600) gameOver();
-            }
+            if (!hit && nearestDist > 800) gameOver();
         }
 
-        // 3. Camera Smooth Follow
-        // Target is player, but slightly offset up so we see where we are going
         const targetCamX = player.x - width/2;
-        const targetCamY = player.y - height/1.6;
-        
+        const targetCamY = player.y - height/2;
         camera.x += (targetCamX - camera.x) * 0.1;
         camera.y += (targetCamY - camera.y) * 0.1;
     }
 
-    function showCombo(text) {
-        const el = document.getElementById('combo-alert');
-        el.innerText = text; 
-        el.style.opacity = 1;
-        el.style.transform = "scale(1.2)";
-        setTimeout(() => {
-            el.style.opacity = 0;
-            el.style.transform = "scale(1)";
-        }, 1000);
+    // --- SNAPSHOT GENERATOR ---
+    function generateConstellationImage() {
+        const snapCanvas = document.getElementById('snapshot-canvas');
+        const sCtx = snapCanvas.getContext('2d');
+        const connectedNodes = nodes.filter(n => n.connected);
+        if (connectedNodes.length === 0) return;
+
+        let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+        connectedNodes.forEach(n => {
+            if(n.x < minX) minX = n.x; if(n.x > maxX) maxX = n.x;
+            if(n.y < minY) minY = n.y; if(n.y > maxY) maxY = n.y;
+        });
+
+        const padding = 50; minX -= padding; maxX += padding; minY -= padding; maxY += padding;
+        const mapWidth = Math.max(100, maxX - minX);
+        const mapHeight = Math.max(100, maxY - minY);
+        const maxWidth = 280; const maxHeight = 180;
+        const scale = Math.min(maxWidth / mapWidth, maxHeight / mapHeight);
+
+        snapCanvas.width = mapWidth * scale; snapCanvas.height = mapHeight * scale;
+        sCtx.fillStyle = '#050505'; sCtx.fillRect(0, 0, snapCanvas.width, snapCanvas.height);
+
+        // Draw Lines with their specific colors
+        sCtx.lineWidth = 2; 
+        lines.forEach(l => {
+            sCtx.strokeStyle = l.color; // Use stored color
+            sCtx.beginPath();
+            sCtx.moveTo((l.x1 - minX) * scale, (l.y1 - minY) * scale);
+            sCtx.lineTo((l.x2 - minX) * scale, (l.y2 - minY) * scale);
+            sCtx.stroke();
+        });
+
+        connectedNodes.forEach(n => {
+            const cx = (n.x - minX) * scale; const cy = (n.y - minY) * scale;
+            sCtx.beginPath(); sCtx.arc(cx, cy, 3, 0, Math.PI*2); sCtx.fillStyle = '#fff'; sCtx.fill();
+        });
+    }
+
+    function gameOver() {
+        if (gameState === 'GAMEOVER') return;
+        gameState = 'GAMEOVER';
+        beep(100, 'sawtooth', 0.5);
+        document.getElementById('final-score').innerText = score;
+        generateConstellationImage();
+        document.getElementById('game-over-screen').classList.remove('hidden');
     }
 
     function draw() {
         ctx.fillStyle = COLORS.bg;
         ctx.fillRect(0, 0, width, height);
 
-        // Grid Lines
-        ctx.strokeStyle = COLORS.blue;
-        ctx.lineWidth = 3;
-        ctx.lineCap = 'round';
-        ctx.shadowBlur = 10; 
-        ctx.shadowColor = COLORS.blue;
+        stars.forEach(s => s.draw());
+
+        // Draw Links
+        ctx.lineWidth = 3; ctx.lineCap = 'round';
+        ctx.shadowBlur = 10;
         
         lines.forEach(l => {
+            if (l.x1 - camera.x < -200 && l.x2 - camera.x < -200) return;
+            ctx.shadowColor = l.color;
+            ctx.strokeStyle = l.color;
             ctx.beginPath();
             ctx.moveTo(l.x1 - camera.x, l.y1 - camera.y);
             ctx.lineTo(l.x2 - camera.x, l.y2 - camera.y);
@@ -430,15 +486,12 @@
         });
         ctx.shadowBlur = 0;
 
-        // Nodes
         nodes.forEach(n => n.draw());
 
-        // Player
         if (gameState !== 'GAMEOVER') {
             const px = player.x - camera.x;
             const py = player.y - camera.y;
 
-            // Trail
             if(player.state === 'FLIGHT') {
                 ctx.beginPath();
                 ctx.moveTo(px - player.vx*4, py - player.vy*4);
@@ -448,45 +501,41 @@
                 ctx.stroke();
             }
 
-            ctx.beginPath();
-            ctx.arc(px, py, 6, 0, Math.PI*2);
-            ctx.fillStyle = '#fff'; 
-            ctx.fill();
-            ctx.shadowBlur = 10; ctx.shadowColor = '#fff';
+            ctx.beginPath(); ctx.arc(px, py, 6, 0, Math.PI*2);
+            ctx.fillStyle = '#fff'; ctx.fill();
+            ctx.shadowBlur = 15; ctx.shadowColor = '#fff';
             ctx.stroke(); ctx.shadowBlur = 0;
         }
     }
 
-    // MAIN LOOP
     function loop() {
         if (gameState === 'PLAYING') {
             update();
             draw();
             requestID = requestAnimationFrame(loop);
         } else if (gameState === 'GAMEOVER') {
-            draw(); // Keep drawing static scene
+            draw(); 
         }
     }
 
-    // Input Listeners
+    if (!Array.prototype.findLast) {
+        Array.prototype.findLast = function(fn) {
+            for (let i = this.length - 1; i >= 0; i--) {
+                if (fn(this[i], i, this)) return this[i];
+            }
+            return undefined;
+        };
+    }
+
     window.addEventListener('pointerdown', (e) => {
-        // Prevent clicking through overlay buttons
         if(e.target.tagName !== 'BUTTON') handleInput(e);
     });
     window.addEventListener('keydown', (e) => {
         if(e.code === 'Space') handleInput(e);
     });
+    document.getElementById('start-btn').addEventListener('click', (e) => { e.stopPropagation(); init(); });
+    document.getElementById('restart-btn').addEventListener('click', (e) => { e.stopPropagation(); init(); });
 
-    document.getElementById('start-btn').addEventListener('click', (e) => {
-        e.stopPropagation();
-        init();
-    });
-    document.getElementById('restart-btn').addEventListener('click', (e) => {
-        e.stopPropagation();
-        init();
-    });
-
-    // Initial static draw
     resize();
     ctx.fillStyle = COLORS.bg;
     ctx.fillRect(0, 0, width, height);
