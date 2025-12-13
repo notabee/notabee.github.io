@@ -119,7 +119,7 @@
     <div id="ui-layer">
         <div id="energy-container"><div id="energy-bar"></div></div>
         <div class="stats-top">
-            <div>STARS: <span id="current-score">0</span></div>
+            <div>STAR ENERGY: <span id="current-score">0</span></div>
             <div>STABILITY: <span id="stability-percent">100</span>%</div>
         </div>
 
@@ -147,7 +147,7 @@
                 <canvas id="snapshot-canvas"></canvas>
                 <div class="snap-label">SECTOR MAP</div>
             </div>
-            <p style="color: #fff; margin:0;">Energy Collected: <span id="final-score">0</span></p>
+            <p style="color: #fff; margin:0;">Star Energy Collected: <span id="final-score">0</span></p>
             <button id="restart-btn">Re-Initialize</button>
         </div>
     </div>
@@ -384,7 +384,7 @@
                         score += starsGained;
                         energy = Math.min(100, energy + (starsGained * 15));
                         
-                        createFloatText(node.x, node.y, "+" + starsGained + (starsGained>1?" STARS":" STAR"), isLong ? COLORS.pink : COLORS.blue);
+                        createFloatText(node.x, node.y, "+" + starsGained + " Star Energy", isLong ? COLORS.pink : COLORS.blue);
                     } else {
                         // First jump (rare case if loop starts unconnected)
                         node.connected = true;
