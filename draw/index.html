@@ -1,0 +1,302 @@
+``html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Draw // RB</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Courier+Prime:wght@400;700&display=swap');
+
+        :root {
+            --neon-pink: #FF0055;
+            --neon-blue: #00F3FF;
+            --neon-yellow: #FFDD00;
+            --bg-black: #050505;
+            --panel-bg: rgba(20, 20, 20, 0.9);
+        }
+
+        body {
+            margin: 0;
+            background-color: var(--bg-black);
+            font-family: 'Courier Prime', monospace;
+            overflow: hidden; /* Prevent scrolling while drawing */
+            touch-action: none;
+        }
+
+        /* CANVAS LAYER */
+        #drawing-canvas {
+            display: block;
+            cursor: crosshair;
+        }
+
+        /* UI OVERLAY */
+        #toolbar {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--panel-bg);
+            border: 1px solid var(--neon-pink);
+            padding: 15px;
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            border-radius: 4px;
+            box-shadow: 0 0 15px rgba(255, 0, 85, 0.2);
+            flex-wrap: wrap;
+            justify-content: center;
+            width: 90%;
+            max-width: 600px;
+            z-index: 100;
+        }
+
+        /* TOOLS */
+        .tool-btn {
+            background: transparent;
+            border: 1px solid #444;
+            color: #fff;
+            padding: 10px 15px;
+            font-family: inherit;
+            cursor: pointer;
+            text-transform: uppercase;
+            font-size: 0.8rem;
+            transition: all 0.2s;
+        }
+
+        .tool-btn:hover {
+            border-color: var(--neon-pink);
+            box-shadow: 0 0 5px var(--neon-pink);
+        }
+
+        .tool-btn.active {
+            background: var(--neon-pink);
+            color: #000;
+            border-color: var(--neon-pink);
+            font-weight: bold;
+        }
+
+        /* COLOR PICKER */
+        .color-opt {
+            width: 25px;
+            height: 25px;
+            border-radius: 50%;
+            border: 2px solid #333;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+        .color-opt:hover { transform: scale(1.2); }
+        .color-opt.active { border-color: #fff; box-shadow: 0 0 8px currentColor; }
+
+        /* SLIDER */
+        input[type="range"] {
+            -webkit-appearance: none;
+            width: 80px;
+            height: 4px;
+            background: #333;
+            border-radius: 2px;
+            outline: none;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 15px;
+            height: 15px;
+            background: var(--neon-pink);
+            cursor: pointer;
+            border-radius: 50%;
+        }
+
+        /* HEADER */
+        .header-ui {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            color: var(--neon-pink);
+            pointer-events: none;
+            user-select: none;
+            z-index: 10;
+        }
+        .header-ui h1 { margin: 0; font-size: 1.5rem; text-shadow: 0 0 5px var(--neon-pink); }
+        .back-link {
+            pointer-events: auto;
+            color: #fff;
+            text-decoration: none;
+            font-size: 0.8rem;
+            opacity: 0.7;
+            margin-top: 5px;
+            display: inline-block;
+            border-bottom: 1px solid transparent;
+        }
+        .back-link:hover { opacity: 1; border-bottom-color: var(--neon-pink); }
+
+        /* RESPONSIVE */
+        @media (max-width: 600px) {
+            #toolbar { bottom: 0; width: 100%; max-width: 100%; border-radius: 0; border-left: none; border-right: none; padding: 10px; gap: 10px; }
+            .tool-btn { padding: 8px 10px; font-size: 0.7rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <div class="header-ui">
+        <h1>DRAW_MODE</h1>
+        <a href="https://notabee.github.io/" class="back-link">&lt; RETURN TO ENTROPY</a>
+    </div>
+
+    <canvas id="drawing-canvas"></canvas>
+
+    <div id="toolbar">
+        <div class="color-opt active" style="background-color: #FF0055;" data-color="#FF0055"></div>
+        <div class="color-opt" style="background-color: #00F3FF;" data-color="#00F3FF"></div>
+        <div class="color-opt" style="background-color: #FFDD00;" data-color="#FFDD00"></div>
+        <div class="color-opt" style="background-color: #FFFFFF;" data-color="#FFFFFF"></div>
+
+        <div style="width: 1px; height: 30px; background: #333; margin: 0 5px;"></div>
+
+        <input type="range" id="size-slider" min="1" max="50" value="3" title="Brush Size">
+
+        <div style="width: 1px; height: 30px; background: #333; margin: 0 5px;"></div>
+
+        <button id="btn-pencil" class="tool-btn active">Pencil</button>
+        <button id="btn-eraser" class="tool-btn">Erase</button>
+        <button id="btn-clear" class="tool-btn" style="border-color: #990033; color: #ffcccc;">Clear</button>
+        <button id="btn-save" class="tool-btn">Save</button>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('drawing-canvas');
+        const ctx = canvas.getContext('2d');
+        
+        let painting = false;
+        let mode = 'pencil'; // pencil or eraser
+        let currentColor = '#FF0055';
+        let currentSize = 3;
+
+        // --- RESIZE LOGIC ---
+        function resize() {
+            // Save current drawing
+            const tempCanvas = document.createElement('canvas');
+            const tempCtx = tempCanvas.getContext('2d');
+            tempCanvas.width = canvas.width;
+            tempCanvas.height = canvas.height;
+            if(canvas.width > 0) tempCtx.drawImage(canvas, 0, 0);
+
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+
+            // Restore drawing
+            ctx.drawImage(tempCanvas, 0, 0);
+            
+            // Re-apply settings
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+        }
+        window.addEventListener('resize', resize);
+        resize();
+
+        // --- DRAWING ENGINE ---
+        function startPosition(e) {
+            painting = true;
+            draw(e); // Allow dots
+        }
+
+        function endPosition() {
+            painting = false;
+            ctx.beginPath(); // Reset path so lines don't connect
+        }
+
+        function draw(e) {
+            if (!painting) return;
+
+            e.preventDefault(); // Prevent scrolling on touch
+
+            const clientX = e.clientX || e.touches[0].clientX;
+            const clientY = e.clientY || e.touches[0].clientY;
+
+            ctx.lineWidth = currentSize;
+            
+            if (mode === 'eraser') {
+                ctx.globalCompositeOperation = 'destination-out'; // Makes transparent
+                // Slightly larger eraser feels better
+                ctx.lineWidth = currentSize * 2; 
+            } else {
+                ctx.globalCompositeOperation = 'source-over';
+                ctx.strokeStyle = currentColor;
+                // Add glow effect if pencil
+                ctx.shadowBlur = 10;
+                ctx.shadowColor = currentColor;
+            }
+
+            ctx.lineTo(clientX, clientY);
+            ctx.stroke();
+            ctx.beginPath();
+            ctx.moveTo(clientX, clientY);
+        }
+
+        // --- EVENT LISTENERS ---
+        // Mouse
+        canvas.addEventListener('mousedown', startPosition);
+        canvas.addEventListener('mouseup', endPosition);
+        canvas.addEventListener('mousemove', draw);
+        // Touch
+        canvas.addEventListener('touchstart', startPosition);
+        canvas.addEventListener('touchend', endPosition);
+        canvas.addEventListener('touchmove', draw);
+
+        // --- UI LOGIC ---
+        const btnPencil = document.getElementById('btn-pencil');
+        const btnEraser = document.getElementById('btn-eraser');
+        const btnClear = document.getElementById('btn-clear');
+        const btnSave = document.getElementById('btn-save');
+        const slider = document.getElementById('size-slider');
+        const colors = document.querySelectorAll('.color-opt');
+
+        // Mode Switching
+        btnPencil.addEventListener('click', () => {
+            mode = 'pencil';
+            btnPencil.classList.add('active');
+            btnEraser.classList.remove('active');
+        });
+
+        btnEraser.addEventListener('click', () => {
+            mode = 'eraser';
+            btnEraser.classList.add('active');
+            btnPencil.classList.remove('active');
+        });
+
+        // Color Switching
+        colors.forEach(c => {
+            c.addEventListener('click', (e) => {
+                // Remove active from all
+                colors.forEach(x => x.classList.remove('active'));
+                // Add to clicked
+                e.target.classList.add('active');
+                currentColor = e.target.getAttribute('data-color');
+                // If we pick a color, auto-switch to pencil
+                if(mode === 'eraser') btnPencil.click();
+            });
+        });
+
+        // Size
+        slider.addEventListener('input', (e) => {
+            currentSize = e.target.value;
+        });
+
+        // Clear
+        btnClear.addEventListener('click', () => {
+            if(confirm('Clear the canvas?')) {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+            }
+        });
+
+        // Save
+        btnSave.addEventListener('click', () => {
+            const link = document.createElement('a');
+            link.download = 'entropy_drawing.png';
+            link.href = canvas.toDataURL();
+            link.click();
+        });
+
+    </script>
+</body>
+</html>
