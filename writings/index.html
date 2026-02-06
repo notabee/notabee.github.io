@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Void // RB</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/showdown/2.1.0/showdown.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Courier+Prime:ital,wght@0,400;0,700;1,400&display=swap"
+        rel="stylesheet">
+    <style>
+        :root {
+            --neon-pink: #FF0055;
+            --neon-dim: #990033;
+            --text-white: #e0e0e0;
+            --bg-black: #050505;
+        }
+
+        body {
+            background-color: var(--bg-black);
+            color: var(--text-white);
+            font-family: 'Courier Prime', monospace;
+            margin: 0;
+            padding: 20px;
+            overflow-x: hidden;
+        }
+
+        /* --- LOGIN SCREEN --- */
+        #gatekeeper {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            background: var(--bg-black);
+            transition: opacity 1s ease;
+        }
+
+        .input-box {
+            background: transparent;
+            border: none;
+            border-bottom: 2px solid var(--neon-dim);
+            color: var(--neon-pink);
+            font-family: inherit;
+            font-size: 1.5rem;
+            text-align: center;
+            padding: 10px;
+            width: 300px;
+            outline: none;
+            transition: border-color 0.3s;
+        }
+
+        .input-box:focus {
+            border-color: var(--neon-pink);
+        }
+
+        .enter-btn {
+            margin-top: 20px;
+            background: transparent;
+            border: 1px solid var(--neon-pink);
+            color: var(--neon-pink);
+            padding: 10px 30px;
+            font-family: inherit;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            transition: all 0.3s;
+        }
+
+        .enter-btn:hover {
+            background: var(--neon-pink);
+            color: #000;
+            box-shadow: 0 0 15px var(--neon-pink);
+        }
+
+        #error-msg {
+            color: red;
+            margin-top: 15px;
+            height: 20px;
+            font-size: 0.9rem;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        /* --- CONTENT --- */
+        #content-area {
+            max-width: 800px;
+            margin: 0 auto;
+            opacity: 0;
+            transition: opacity 1s ease;
+            pointer-events: none;
+        }
+
+        #content-area.visible {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .header {
+            margin-bottom: 50px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #333;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .header h1 {
+            margin: 0;
+            color: var(--neon-pink);
+            text-shadow: 0 0 5px var(--neon-dim);
+        }
+
+        .back-link {
+            color: #888;
+            text-decoration: none;
+            font-size: 0.9rem;
+        }
+
+        .back-link:hover {
+            color: #fff;
+        }
+
+        .entry {
+            margin-bottom: 60px;
+            animation: fadeIn 0.8s ease backwards;
+        }
+
+        .entry-header {
+            margin-bottom: 15px;
+        }
+
+        .entry-title {
+            font-size: 1.5rem;
+            color: #fff;
+            font-weight: bold;
+        }
+
+        .entry-date {
+            font-size: 0.9rem;
+            color: var(--neon-pink);
+            margin-top: 5px;
+            opacity: 0.8;
+        }
+
+        .entry-body {
+            line-height: 1.6;
+            color: #ccc;
+        }
+
+        .entry-body p {
+            margin-bottom: 15px;
+        }
+
+        .entry-body blockquote {
+            border-left: 2px solid var(--neon-dim);
+            margin-left: 0;
+            padding-left: 15px;
+            color: #888;
+            font-style: italic;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* LOADING */
+        .loader {
+            border: 2px solid #333;
+            border-top: 2px solid var(--neon-pink);
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            animation: spin 1s linear infinite;
+            margin-top: 20px;
+            display: none;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0deg);
+            }
+
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <!-- SECURE GATE -->
+    <div id="gatekeeper">
+        <h2 style="font-weight: normal; opacity: 0.7; margin-bottom: 40px;">[ ACCESS RESTRICTED ]</h2>
+        <input type="password" id="pass-input" class="input-box" placeholder="ENTER KEY" autofocus>
+        <div class="loader" id="loader"></div>
+        <button id="unlock-btn" class="enter-btn">UNLOCK</button>
+        <div id="error-msg">ACCESS DENIED</div>
+    </div>
+
+    <!-- PRIVATE WRITINGS -->
+    <div id="content-area">
+        <header class="header">
+            <h1>THE VOID</h1>
+            <a href="https://notabee.github.io/" class="back-link">EXIT</a>
+        </header>
+        <div id="entries-container">
+            <!-- Entries injected here -->
+        </div>
+    </div>
+
+    <script>
+        const input = document.getElementById('pass-input');
+        const btn = document.getElementById('unlock-btn');
+        const loader = document.getElementById('loader');
+        const errorMsg = document.getElementById('error-msg');
+        const gate = document.getElementById('gatekeeper');
+        const contentArea = document.getElementById('content-area');
+        const container = document.getElementById('entries-container');
+
+        const converter = new showdown.Converter();
+
+        // Trigger unlock on Enter key
+        input.addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') attemptUnlock();
+        });
+
+        btn.addEventListener('click', attemptUnlock);
+
+        async function attemptUnlock() {
+            const key = input.value;
+            if (!key) return;
+
+            // UI feedback
+            input.disabled = true;
+            btn.style.display = 'none';
+            loader.style.display = 'block';
+            errorMsg.style.opacity = '0';
+
+            try {
+                // Fetch the vault
+                let response;
+                try {
+                    response = await fetch('vault.json');
+                } catch (e) {
+                    throw new Error('FETCH_FAILED');
+                }
+
+                if (!response.ok) throw new Error('Vault not found');
+
+                let vault;
+                try {
+                    vault = await response.json();
+                } catch (e) {
+                    throw new Error('INVALID_JSON');
+                }
+
+                // FIX: If user accidentally pastes a single object instead of array, handle it
+                if (!Array.isArray(vault)) {
+                    vault = [vault];
+                }
+
+                if (vault.length === 0) {
+                    showContent([]);
+                    return;
+                }
+
+                const decryptedEntries = [];
+                let success = false;
+
+                // Loop through all items
+                // We use individual try-catch so one bad key doesn't break everything
+                // This allows for "Partial Unlocking" if someone changes their key later
+                for (const item of vault) {
+                    try {
+                        const bytes = CryptoJS.AES.decrypt(item.data, key);
+                        const originalText = bytes.toString(CryptoJS.enc.Utf8);
+
+                        if (!originalText) continue; // Wrong key usually returns empty string
+
+                        const entry = JSON.parse(originalText);
+                        // Simple structure check
+                        if (entry.title && entry.content) {
+                            decryptedEntries.push(entry);
+                            success = true;
+                        }
+                    } catch (e) {
+                        // Ignore individual failures (wrong key for this specific item)
+                        // console.log('Skipping item', e);
+                    }
+                }
+
+                if (success) {
+                    showContent(decryptedEntries);
+                } else {
+                    throw new Error('No items decrypted');
+                }
+
+            } catch (err) {
+                console.error(err);
+
+                let userMessage = "ACCESS DENIED";
+
+                if (err.message === 'FETCH_FAILED') {
+                    userMessage = "ERROR: Cannot load vault.json.";
+                    if (window.location.protocol === 'file:') {
+                        userMessage = "SECURITY BLOCK: Browsers block data loading from file://. Please use a local server.";
+                    }
+                } else if (err.message === 'INVALID_JSON') {
+                    userMessage = "ERROR: vault.json is corrupted.";
+                }
+
+                setTimeout(() => {
+                    input.disabled = false;
+                    input.value = '';
+                    input.focus();
+                    btn.style.display = 'inline-block';
+                    loader.style.display = 'none';
+                    errorMsg.innerText = userMessage;
+                    errorMsg.style.opacity = '1';
+                }, 500);
+            }
+        }
+
+        function showContent(entries) {
+            // Hide gate
+            gate.style.opacity = '0';
+            setTimeout(() => {
+                gate.style.display = 'none';
+                contentArea.classList.add('visible');
+            }, 1000);
+
+            // Render entries
+            if (entries.length === 0) {
+                container.innerHTML = '<div style="text-align:center; color:#555; margin-top:100px;">The void is empty.</div>';
+                return;
+            }
+
+            // Sort by date usually? Assuming order in json is preferred for now (first is top)
+            entries.forEach((entry, index) => {
+                const html = converter.makeHtml(entry.content);
+
+                const div = document.createElement('div');
+                div.className = 'entry';
+                div.style.animationDelay = `${index * 0.1}s`;
+
+                div.innerHTML = `
+                    <div class="entry-header">
+                        <div class="entry-title">${entry.title}</div>
+                        <div class="entry-date">${entry.date}</div>
+                    </div>
+                    <div class="entry-body">${html}</div>
+                `;
+                container.appendChild(div);
+            });
+        }
+    </script>
+</body>
+
+</html>
